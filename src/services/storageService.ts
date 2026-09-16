@@ -95,6 +95,7 @@ function seedInitialData() {
   localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify({}));
   localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify([]));
+  localStorage.removeItem(STORAGE_KEYS.AI_COACH_ANALYSIS);
   localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
 }
 
@@ -1546,23 +1547,7 @@ class StorageService {
     };
 
     if (studyTasks.length === 0) {
-      return Object.entries(baselineSubjects).map(([subj, data]) => {
-        const hours = Math.floor(data.minutes / 60);
-        const mins = data.minutes % 60;
-        const formattedDuration = `${hours}h ${mins > 0 ? `${mins}m` : ''}`.trim();
-        const accuracy = Math.round((data.correct / data.q) * 100);
-        return {
-          subject: subj,
-          studyMinutes: data.minutes,
-          formattedDuration,
-          questionsAttempted: data.q,
-          questionsCorrect: data.correct,
-          accuracy,
-          color: subjectColors[subj] || '#4f46e5',
-          tasksCount: data.count,
-          topics: data.topics,
-        };
-      });
+      return [];
     }
 
     for (const task of studyTasks) {
@@ -1722,17 +1707,10 @@ class StorageService {
       });
     });
 
-    // Provide default fallback canonical representation if no stored items found
-    if (tasksTotal === 0) {
-      tasksCompleted = 37;
-      tasksTotal = 42;
-      totalFocusSeconds = 66300; // 18h 25m
-    }
-
-    const completionRate = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 88;
+    const completionRate = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
     const focusHours = Math.floor(totalFocusSeconds / 3600);
     const focusMinutes = Math.round((totalFocusSeconds % 3600) / 60);
-    const formattedFocusTime = `${focusHours}h ${focusMinutes > 0 ? `${focusMinutes}m` : ''}`.trim();
+    const formattedFocusTime = totalFocusSeconds > 0 ? `${focusHours}h ${focusMinutes > 0 ? `${focusMinutes}m` : ''}`.trim() : '0m';
 
     // Determine Best Day and Weakest Day
     let bestDay = dayPerformance.reduce((prev, curr) => {
@@ -1740,32 +1718,33 @@ class StorageService {
         return curr;
       }
       return prev;
-    }, dayPerformance[0] || { date: targetDateStr, dayName: 'Tuesday', completed: 9, total: 10, rate: 90, score: 96, focusSeconds: 12000 });
+    }, dayPerformance[0] || { date: targetDateStr, dayName: 'None', completed: 0, total: 0, rate: 0, score: 0, focusSeconds: 0 });
 
     let weakestDay = dayPerformance.reduce((prev, curr) => {
-      if (curr.total > 0 && curr.rate < prev.rate) {
+      if (curr.total > 0 && (prev.total === 0 || curr.rate < prev.rate)) {
         return curr;
       }
       return prev;
-    }, dayPerformance[0] || { date: targetDateStr, dayName: 'Saturday', completed: 2, total: 5, rate: 40, score: 45, focusSeconds: 7800 });
+    }, dayPerformance[0] || { date: targetDateStr, dayName: 'None', completed: 0, total: 0, rate: 0, score: 0, focusSeconds: 0 });
 
-    // Ensure Saturday is identified if it had lowest performance
-    const satDay = dayPerformance.find((d) => d.dayName === 'Saturday');
-    const tueDay = dayPerformance.find((d) => d.dayName === 'Tuesday');
-    if (satDay && satDay.total > 0 && satDay.rate <= 60) {
-      weakestDay = satDay;
-    }
-    if (tueDay && tueDay.completed >= (bestDay?.completed || 0) * 0.8) {
-      bestDay = tueDay;
+    if (tasksTotal > 0) {
+      const satDay = dayPerformance.find((d) => d.dayName === 'Saturday');
+      const tueDay = dayPerformance.find((d) => d.dayName === 'Tuesday');
+      if (satDay && satDay.total > 0 && satDay.rate <= 60) {
+        weakestDay = satDay;
+      }
+      if (tueDay && tueDay.completed > 0 && tueDay.completed >= (bestDay?.completed || 0) * 0.8) {
+        bestDay = tueDay;
+      }
     }
 
     // Determine Top Habit across the 7 days
     let topHabit = {
-      id: 'h_cgl',
-      name: 'CGL Study',
-      completedCount: 6,
-      totalDays: 7,
-      rate: 86,
+      id: '',
+      name: 'No habits tracked',
+      completedCount: 0,
+      totalDays: dateList.length,
+      rate: 0,
     };
 
     if (allHabits.length > 0) {
@@ -1783,9 +1762,7 @@ class StorageService {
       });
 
       if (winningHabit && maxHabitCompletions > 0) {
-        const hName = winningHabit.name.includes('CGL')
-          ? 'CGL Study'
-          : winningHabit.name.replace(/^[^\w\s]+/, '').trim();
+        const hName = winningHabit.name.replace(/^[^\w\s]+/, '').trim();
         topHabit = {
           id: winningHabit.id,
           name: hName,
@@ -2015,8 +1992,8 @@ class StorageService {
     });
 
     // Find period with highest completed items and strong rate
-    let strongestPeriod = '7 AM – 11 AM';
-    let strongestEvidence = '18 of 20 scheduled tasks completed (90% completion rate)';
+    let strongestPeriod = tasksPlanned > 0 ? 'Morning (7 AM – 11 AM)' : 'No activity recorded yet';
+    let strongestEvidence = tasksPlanned > 0 ? 'Peak scheduled completion window' : 'No scheduled tasks during this period';
     let maxCompleted = -1;
 
     for (const bucket of Object.values(periodBuckets)) {
@@ -2030,9 +2007,8 @@ class StorageService {
 
     // Identify frequently postponed / uncompleted task
     const incompleteTasks = weekItems.filter((item) => !item.completed);
-    let frequentlyPostponedTask = 'Quant Practice';
-    let frequentlyPostponedEvidence =
-      '3 scheduled Quant problem-solving sessions were postponed or dropped';
+    let frequentlyPostponedTask = 'None';
+    let frequentlyPostponedEvidence = 'No uncompleted tasks across this review window';
 
     if (incompleteTasks.length > 0) {
       const taskDropCounts = new Map<string, number>();
@@ -2072,20 +2048,25 @@ class StorageService {
       });
     }
 
-    // Canonical and data-backed study distribution matching:
-    // GK 62%, Quant 12%, Reasoning 18%, English 8%
+    // Derive study distribution from current weekly review subject breakdown
+    const subjectBreakdown = weeklyReview.subjectBreakdown || [];
+    const totalStudyMins = subjectBreakdown.reduce((acc, s) => acc + (s.studyMinutes || 0), 0);
+
     const studyDistribution: Array<{
       subject: string;
       percentage: number;
       studyMinutes: number;
       formattedDuration: string;
       color: string;
-    }> = [
-      { subject: 'GK', percentage: 62, studyMinutes: 310, formattedDuration: '5h 10m', color: '#059669' },
-      { subject: 'Quant', percentage: 12, studyMinutes: 60, formattedDuration: '1h 00m', color: '#2563eb' },
-      { subject: 'Reasoning', percentage: 18, studyMinutes: 90, formattedDuration: '1h 30m', color: '#7c3aed' },
-      { subject: 'English', percentage: 8, studyMinutes: 40, formattedDuration: '40m', color: '#d97706' },
-    ];
+    }> = totalStudyMins > 0
+      ? subjectBreakdown.map((s) => ({
+          subject: s.subject,
+          percentage: Math.round(((s.studyMinutes || 0) / totalStudyMins) * 100),
+          studyMinutes: s.studyMinutes,
+          formattedDuration: s.formattedDuration,
+          color: s.color,
+        }))
+      : [];
 
     return {
       weekLabel: weeklyReview.weekLabel,
@@ -2094,8 +2075,8 @@ class StorageService {
       tasksPlanned,
       tasksCompleted,
       completionRate,
-      dailyAvgPlanned: 6,
-      dailyAvgCompleted: 4,
+      dailyAvgPlanned: tasksPlanned > 0 ? Math.round(tasksPlanned / 7) : 0,
+      dailyAvgCompleted: tasksCompleted > 0 ? Math.round(tasksCompleted / 7) : 0,
       strongestPeriod,
       strongestPeriodEvidence: strongestEvidence,
       frequentlyPostponedTask,
@@ -2143,7 +2124,12 @@ class StorageService {
     if (!forceRegenerate) {
       const cached = this.getCachedAICoachAnalysis();
       if (cached) {
-        return cached;
+        // If current data is clean (0 tasks) but cached analysis has stale non-zero tasks, invalidate stale cache
+        if (inputData.tasksPlanned === 0 && (cached.plannedTasks > 0 || cached.completedTasks > 0)) {
+          localStorage.removeItem(STORAGE_KEYS.AI_COACH_ANALYSIS);
+        } else {
+          return cached;
+        }
       }
     }
 
@@ -2169,6 +2155,26 @@ class StorageService {
     } catch (err: any) {
       console.warn('[StorageService] AI Coach network or server fallback trigger:', err);
       // Gracefully generate client fallback without failing
+      const isClean = inputData.tasksPlanned === 0 && inputData.tasksCompleted === 0;
+      const recs = isClean
+        ? [
+            'Create your first daily tasks and habits for today to start tracking.',
+            'Complete a focused study session to establish your productivity rhythm.',
+            'Check back at the end of the week for personalized AI Coach insights based on real activity.',
+          ]
+        : [
+            `Move ${inputData.frequentlyPostponedTask} to your strongest study period.`,
+            inputData.dailyAvgPlanned > inputData.dailyAvgCompleted
+              ? `Align daily planned tasks from ${inputData.dailyAvgPlanned} to ${inputData.dailyAvgCompleted}.`
+              : `Maintain steady pace of ${inputData.dailyAvgCompleted || 2} tasks per day.`,
+            `Schedule revision before your evening workload.`,
+          ];
+
+      const distText =
+        inputData.studyDistribution.length > 0
+          ? inputData.studyDistribution.map((s) => `${s.subject} ${s.percentage}%`).join('\n')
+          : 'No study sessions recorded';
+
       const fallbackAnalysis: AICoachAnalysisResult = {
         plannedTasks: inputData.tasksPlanned,
         completedTasks: inputData.tasksCompleted,
@@ -2180,16 +2186,14 @@ class StorageService {
           percentage: s.percentage,
           color: s.color,
         })),
-        recommendations: [
-          `Move ${inputData.frequentlyPostponedTask} to your strongest study period.`,
-          `Reduce daily planned tasks from ${inputData.dailyAvgPlanned} to ${inputData.dailyAvgCompleted}.`,
-          `Schedule revision before your evening workload.`,
-        ],
-        coachNote: `Great consistency this week with ${inputData.tasksCompleted} completed tasks. Protect your peak morning hours for high-friction subjects.`,
+        recommendations: recs,
+        coachNote: isClean
+          ? 'Welcome to your clean tracker! Start logging tasks today to build your real personal productivity history.'
+          : `Great consistency this week with ${inputData.tasksCompleted} completed tasks. Protect your peak morning hours for high-friction subjects.`,
         isAiGenerated: false,
         modelUsed: 'Built-in Productivity Coach Engine',
         generatedAt: new Date().toISOString(),
-        formattedText: `YOUR WEEK\n\nYou planned ${inputData.tasksPlanned} tasks.\nYou completed ${inputData.tasksCompleted}.\n\nYour strongest performance period:\n${inputData.strongestPeriod}.\n\nYou frequently postponed:\n${inputData.frequentlyPostponedTask}.\n\nStudy distribution:\n${inputData.studyDistribution.map((s) => `${s.subject} ${s.percentage}%`).join('\n')}\n\nRECOMMENDATIONS\n\n1. Move ${inputData.frequentlyPostponedTask} to your strongest study period.\n2. Reduce daily planned tasks from ${inputData.dailyAvgPlanned} to ${inputData.dailyAvgCompleted}.\n3. Schedule revision before your evening workload.`,
+        formattedText: `YOUR WEEK\n\nYou planned ${inputData.tasksPlanned} tasks.\nYou completed ${inputData.tasksCompleted}.\n\nYour strongest performance period:\n${inputData.strongestPeriod}.\n\nYou frequently postponed:\n${inputData.frequentlyPostponedTask}.\n\nStudy distribution:\n${distText}\n\nRECOMMENDATIONS\n\n${recs.map((r, i) => `${i + 1}. ${r}`).join('\n')}`,
         fallbackReason: 'Network/server error — offline fallback activated.',
       };
       this.setCachedAICoachAnalysis(fallbackAnalysis);

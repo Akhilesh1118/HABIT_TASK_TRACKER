@@ -98,7 +98,8 @@ async function startServer() {
         return;
       }
 
-      const analysis = await aiCoachService.analyzeWeeklyProductivity(inputData);
+      const userId = (req as any).user?.userId || 'usr_1';
+      const analysis = await aiCoachService.analyzeWeeklyProductivity(inputData, userId);
       res.json({
         success: true,
         analysis,

@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import { AICoachAnalysisResult, AICoachInputData } from '../../src/types';
+import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData';
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -29,9 +30,10 @@ export function formatCanonicalCoachText(data: {
   studyDistribution: Array<{ subject: string; percentage: number }>;
   recommendations: string[];
 }): string {
-  const distText = data.studyDistribution
-    .map((s) => `${s.subject} ${s.percentage}%`)
-    .join('\n');
+  const distText =
+    data.studyDistribution && data.studyDistribution.length > 0
+      ? data.studyDistribution.map((s) => `${s.subject} ${s.percentage}%`).join('\n')
+      : 'No study sessions recorded';
   const recsText = data.recommendations
     .map((rec, idx) => `${idx + 1}. ${rec}`)
     .join('\n');
@@ -70,7 +72,9 @@ export function generateDeterministicCoachAnalysis(
           'Check back at the end of the week for personalized AI Coach insights based on real activity.',
         ]
       : [
-          `Move ${frequentlyPostponed} to your strongest study period.`,
+          frequentlyPostponed !== 'None'
+            ? `Move ${frequentlyPostponed} to your strongest study period.`
+            : 'Schedule your highest-priority subject during your peak study period.',
           `Target steady consistency with ${Math.max(1, Math.round(plannedTasks / 7))} tasks per day.`,
           `Schedule revision before your evening workload.`,
         ];
@@ -111,9 +115,226 @@ const CANDIDATE_MODELS = [
 ];
 
 export class AICoachService {
+  /**
+   * Resolves authoritative ground truth from MongoDB for the authenticated user
+   */
+  public async resolveAuthoritativeInputData(
+    userId: string,
+    rawInput: AICoachInputData
+  ): Promise<AICoachInputData> {
+    try {
+      // Determine week date range (default to trailing 7 days if absent)
+      let weekStartDate = rawInput.weekStartDate;
+      let weekEndDate = rawInput.weekEndDate;
+
+      if (!weekStartDate || !weekEndDate) {
+        const now = new Date();
+        weekEndDate = now.toISOString().split('T')[0];
+        const startD = new Date(now);
+        startD.setDate(startD.getDate() - 6);
+        weekStartDate = startD.toISOString().split('T')[0];
+      }
+
+      // Query MongoDB tasks for authenticated user (and legacy usr_1 alias)
+      const mongoTasks = await TaskModel.find({
+        $or: [{ userId }, { userId: 'usr_1' }],
+      }).lean();
+
+      // Filter tasks within the review week window
+      const weekTasks = (mongoTasks as any[]).filter((t) => {
+        const taskDate = t.scheduledDate || t.date || t.dueDate || (t.createdAt ? String(t.createdAt).split('T')[0] : '');
+        return taskDate >= weekStartDate && taskDate <= weekEndDate;
+      });
+
+      const plannedTasks = weekTasks.length;
+      const completedTasks = weekTasks.filter(
+        (t) => Boolean(t.completed || t.status === 'completed')
+      ).length;
+      const completionRate = plannedTasks > 0 ? Math.round((completedTasks / plannedTasks) * 100) : 0;
+      const dailyAvgPlanned = plannedTasks > 0 ? Math.round(plannedTasks / 7) : 0;
+      const dailyAvgCompleted = completedTasks > 0 ? Math.round(completedTasks / 7) : 0;
+
+      // Authoritative study tasks from MongoDB
+      const studyTasks = weekTasks.filter((t) => t.isStudySession && t.studySubject);
+      let authoritativeDistribution: Array<{
+        subject: string;
+        percentage: number;
+        studyMinutes: number;
+        formattedDuration: string;
+        color?: string;
+      }> = [];
+
+      const studyColors: Record<string, string> = {
+        GK: '#059669',
+        Quant: '#2563eb',
+        Reasoning: '#7c3aed',
+        English: '#d97706',
+      };
+
+      if (studyTasks.length > 0) {
+        const subjectMap = new Map<string, number>();
+        studyTasks.forEach((t) => {
+          const subj = t.studySubject || 'General';
+          const mins = Number(t.studyDurationMinutes) || Number(t.duration) || 0;
+          subjectMap.set(subj, (subjectMap.get(subj) || 0) + mins);
+        });
+        const totalMins = Array.from(subjectMap.values()).reduce((a, b) => a + b, 0);
+        if (totalMins > 0) {
+          authoritativeDistribution = Array.from(subjectMap.entries()).map(([subj, mins]) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return {
+              subject: subj,
+              percentage: Math.round((mins / totalMins) * 100),
+              studyMinutes: mins,
+              formattedDuration: `${h}h ${m > 0 ? `${m}m` : ''}`.trim() || `${mins}m`,
+              color: studyColors[subj] || '#4f46e5',
+            };
+          });
+        }
+      }
+
+      // Authoritative habits and completions from MongoDB
+      const habits = await HabitModel.find({
+        $or: [{ userId }, { userId: 'usr_1' }],
+        active: true,
+      }).lean();
+
+      let authoritativeTopHabit = {
+        id: '',
+        name: 'No habits tracked',
+        completedCount: 0,
+        totalDays: 7,
+        rate: 0,
+      };
+
+      if (habits.length > 0) {
+        const habitIds = habits.map((h: any) => h.id);
+        const completions = await HabitCompletionModel.find({
+          habitId: { $in: habitIds },
+          date: { $gte: weekStartDate, $lte: weekEndDate },
+          completed: true,
+        }).lean();
+
+        let maxCount = 0;
+        let bestH: any = null;
+        for (const h of habits) {
+          const count = completions.filter((c: any) => c.habitId === (h as any).id).length;
+          if (count > maxCount) {
+            maxCount = count;
+            bestH = h;
+          }
+        }
+        if (bestH && maxCount > 0) {
+          authoritativeTopHabit = {
+            id: bestH.id,
+            name: bestH.name,
+            completedCount: maxCount,
+            totalDays: 7,
+            rate: Math.round((maxCount / 7) * 100),
+          };
+        }
+      }
+
+      // Strongest period & frequently postponed task
+      let strongestPeriod = plannedTasks > 0 ? 'Morning (7 AM – 11 AM)' : 'No activity recorded yet';
+      let strongestPeriodEvidence = plannedTasks > 0 ? 'Peak scheduled completion window' : 'No scheduled tasks during this period';
+      let frequentlyPostponedTask = 'None';
+      let frequentlyPostponedEvidence = 'No uncompleted tasks';
+
+      const incomplete = weekTasks.filter((t) => !t.completed && t.status !== 'completed');
+      if (incomplete.length > 0) {
+        frequentlyPostponedTask = incomplete[0].title || 'Pending Task';
+        frequentlyPostponedEvidence = `${incomplete.length} task(s) uncompleted`;
+      }
+
+      // Best and weakest days
+      let bestDay = {
+        dayName: 'None',
+        date: weekStartDate,
+        completed: 0,
+        total: 0,
+        rate: 0,
+        score: 0,
+      };
+      let weakestDay = {
+        dayName: 'None',
+        date: weekStartDate,
+        completed: 0,
+        total: 0,
+        rate: 0,
+        score: 0,
+      };
+
+      if (plannedTasks > 0) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayStats = new Map<string, { date: string; dayName: string; total: number; completed: number; rate: number }>();
+        weekTasks.forEach((t) => {
+          const dStr = t.scheduledDate || t.date || (t.createdAt ? String(t.createdAt).split('T')[0] : '');
+          if (dStr) {
+            const existing = dayStats.get(dStr) || {
+              date: dStr,
+              dayName: dayNames[new Date(dStr + 'T00:00:00').getDay()] || 'Day',
+              total: 0,
+              completed: 0,
+              rate: 0,
+            };
+            existing.total += 1;
+            if (t.completed || t.status === 'completed') existing.completed += 1;
+            existing.rate = Math.round((existing.completed / existing.total) * 100);
+            dayStats.set(dStr, existing);
+          }
+        });
+
+        const days = Array.from(dayStats.values());
+        if (days.length > 0) {
+          const sortedBest = [...days].sort((a, b) => b.completed - a.completed || b.rate - a.rate);
+          const sortedWeakest = [...days].sort((a, b) => a.rate - b.rate || a.completed - b.completed);
+          bestDay = {
+            ...sortedBest[0],
+            score: sortedBest[0].rate,
+          };
+          weakestDay = {
+            ...sortedWeakest[0],
+            score: sortedWeakest[0].rate,
+          };
+        }
+      }
+
+      return {
+        ...rawInput,
+        weekStartDate,
+        weekEndDate,
+        tasksPlanned: plannedTasks,
+        tasksCompleted: completedTasks,
+        completionRate,
+        dailyAvgPlanned,
+        dailyAvgCompleted,
+        strongestPeriod,
+        strongestPeriodEvidence,
+        frequentlyPostponedTask,
+        frequentlyPostponedEvidence,
+        studyDistribution: authoritativeDistribution,
+        topHabit: authoritativeTopHabit,
+        bestDay,
+        weakestDay,
+        focusHoursFormatted: plannedTasks > 0 ? (rawInput.focusHoursFormatted || '0m') : '0m',
+      };
+    } catch (dbErr) {
+      console.warn('[AICoachService] Failed to query MongoDB for authoritative stats, falling back to sanitized payload:', dbErr);
+      return rawInput;
+    }
+  }
+
   public async analyzeWeeklyProductivity(
-    inputData: AICoachInputData
+    rawInput: AICoachInputData,
+    userId?: string
   ): Promise<AICoachAnalysisResult> {
+    // 1. Resolve authoritative database figures if userId is available
+    const inputData = userId
+      ? await this.resolveAuthoritativeInputData(userId, rawInput)
+      : rawInput;
+
     const client = getAiClient();
 
     // If Gemini client is unavailable (no API key configured), return high-fidelity deterministic analysis
@@ -127,7 +348,9 @@ export class AICoachService {
 
     const plannedTasks = inputData.tasksPlanned ?? 0;
     const completedTasks = inputData.tasksCompleted ?? 0;
-    const strongestPeriod = inputData.strongestPeriod || (plannedTasks === 0 ? 'No activity recorded yet' : 'Morning (9 AM – 12 PM)');
+    const isCleanWeek = plannedTasks === 0 && completedTasks === 0;
+
+    const strongestPeriod = inputData.strongestPeriod || (isCleanWeek ? 'No activity recorded yet' : 'Morning (9 AM – 12 PM)');
     const frequentlyPostponed = inputData.frequentlyPostponedTask || 'None';
     const dailyAvgPlanned = inputData.dailyAvgPlanned ?? (plannedTasks > 0 ? Math.round(plannedTasks / 7) : 0);
     const dailyAvgCompleted = inputData.dailyAvgCompleted ?? (completedTasks > 0 ? Math.round(completedTasks / 7) : 0);
@@ -136,29 +359,41 @@ export class AICoachService {
       .map((s) => `${s.subject}: ${s.percentage}% (${s.formattedDuration || ''})`)
       .join(', ');
 
-    const prompt = `You are analyzing actual weekly productivity tracking data for the week: ${inputData.weekLabel}.
+    const cleanPromptInstructions = `The user has 0 scheduled tasks and 0 completed tasks for this review period (a completely clean state).
+MANDATORY GROUND TRUTH INSTRUCTIONS:
+1. Set plannedTasks to 0, completedTasks to 0, completionRate to 0, strongestPeriod to "No activity recorded yet", frequentlyPostponed to "None".
+2. Set studyDistribution to an empty array [].
+3. Provide exactly 3 actionable, encouraging onboarding recommendations for starting their productivity journey:
+   - Recommendation 1: Create your daily top 3 tasks for today to begin building momentum.
+   - Recommendation 2: Start a 25-minute focused study session to establish your learning routine.
+   - Recommendation 3: Add core daily habits to track consistency across the week.
+4. Provide a supportive 1-2 sentence coachNote welcoming them to their clean tracker.`;
 
-REAL APPLICATION DATA (DO NOT MODIFY THESE FIGURES):
-- Total planned tasks: ${plannedTasks}
-- Total completed tasks: ${completedTasks}
-- Completion rate: ${inputData.completionRate}%
-- Strongest performance period: ${strongestPeriod} (${inputData.strongestPeriodEvidence || 'Peak execution volume'})
-- Most frequently postponed task: ${frequentlyPostponed} (${inputData.frequentlyPostponedEvidence || 'High friction in late evening'})
-- Study distribution: ${distributionString}
-- Daily average planned tasks: ${dailyAvgPlanned}
-- Daily average completed tasks: ${dailyAvgCompleted}
-- Best day: ${inputData.bestDay?.dayName || 'Tuesday'} (${inputData.bestDay?.rate || 90}% completed)
-- Weakest day: ${inputData.weakestDay?.dayName || 'Saturday'} (${inputData.weakestDay?.rate || 40}% completed)
-- Top habit: ${inputData.topHabit?.name || 'CGL Study'} (${inputData.topHabit?.completedCount || 6}/${inputData.topHabit?.totalDays || 7} days)
-
-MANDATORY INSTRUCTIONS:
+    const activePromptInstructions = `MANDATORY INSTRUCTIONS:
 1. Ground truth fidelity: Set plannedTasks to exactly ${plannedTasks}, completedTasks to exactly ${completedTasks}, strongestPeriod to "${strongestPeriod}", frequentlyPostponed to "${frequentlyPostponed}".
-2. Set studyDistribution subjects and percentages matching the real data: ${distributionString}.
+2. Set studyDistribution subjects and percentages matching the real data: ${distributionString || 'empty array []'}.
 3. Provide exactly 3 concise, impactful recommendations without leading numbers:
    - Recommendation 1: ${frequentlyPostponed !== 'None' ? `Move "${frequentlyPostponed}" to your strongest study period.` : 'Schedule your highest-priority subject during your peak study period.'}
    - Recommendation 2: ${dailyAvgPlanned > dailyAvgCompleted ? `Align daily planned tasks from ${dailyAvgPlanned} to a steady ${dailyAvgCompleted}.` : `Maintain your steady pace of ${dailyAvgCompleted || 2} tasks per day.`}
    - Recommendation 3: Schedule revision before your evening workload.
 4. Provide a supportive 1-2 sentence coachNote.`;
+
+    const prompt = `You are analyzing actual weekly productivity tracking data for the week: ${inputData.weekLabel || 'Current Week'}.
+
+REAL APPLICATION DATA (DO NOT MODIFY THESE FIGURES):
+- Total planned tasks: ${plannedTasks}
+- Total completed tasks: ${completedTasks}
+- Completion rate: ${inputData.completionRate ?? 0}%
+- Strongest performance period: ${strongestPeriod} (${inputData.strongestPeriodEvidence || 'N/A'})
+- Most frequently postponed task: ${frequentlyPostponed} (${inputData.frequentlyPostponedEvidence || 'N/A'})
+- Study distribution: ${distributionString || 'None (no study sessions logged)'}
+- Daily average planned tasks: ${dailyAvgPlanned}
+- Daily average completed tasks: ${dailyAvgCompleted}
+- Best day: ${inputData.bestDay?.dayName || 'None'} (${inputData.bestDay?.rate ?? 0}% completed)
+- Weakest day: ${inputData.weakestDay?.dayName || 'None'} (${inputData.weakestDay?.rate ?? 0}% completed)
+- Top habit: ${inputData.topHabit?.name || 'No habits tracked'} (${inputData.topHabit?.completedCount ?? 0}/${inputData.topHabit?.totalDays ?? 7} days)
+
+${isCleanWeek ? cleanPromptInstructions : activePromptInstructions}`;
 
     let lastError: any = null;
 
@@ -233,23 +468,32 @@ MANDATORY INSTRUCTIONS:
         const sanitizedPeriod = parsed.strongestPeriod || strongestPeriod;
         const sanitizedPostponed = parsed.frequentlyPostponed || frequentlyPostponed;
         const sanitizedDistribution =
-          Array.isArray(parsed.studyDistribution) && parsed.studyDistribution.length > 0
+          isCleanWeek
+            ? []
+            : Array.isArray(parsed.studyDistribution) && parsed.studyDistribution.length > 0
             ? parsed.studyDistribution
-            : inputData.studyDistribution.map((s) => ({ subject: s.subject, percentage: s.percentage }));
+            : (inputData.studyDistribution || []).map((s) => ({ subject: s.subject, percentage: s.percentage }));
 
-        const fallbackRec1 =
-          sanitizedPostponed && sanitizedPostponed !== 'None'
-            ? `Move ${sanitizedPostponed} to your strongest study period.`
-            : 'Schedule your highest-priority subject during your peak study period.';
-        const fallbackRec2 =
-          dailyAvgPlanned > dailyAvgCompleted
-            ? `Align daily planned tasks from ${dailyAvgPlanned} to a steady ${dailyAvgCompleted}.`
-            : `Maintain your steady pace of ${dailyAvgCompleted || 2} tasks per day.`;
+        const defaultRecs = isCleanWeek
+          ? [
+              'Create your top daily tasks for today to begin building momentum.',
+              'Complete a focused study session to establish your daily learning habit.',
+              'Track your daily habits consistently across the upcoming week.',
+            ]
+          : [
+              sanitizedPostponed && sanitizedPostponed !== 'None'
+                ? `Move ${sanitizedPostponed} to your strongest study period.`
+                : 'Schedule your highest-priority subject during your peak study period.',
+              dailyAvgPlanned > dailyAvgCompleted
+                ? `Align daily planned tasks from ${dailyAvgPlanned} to a steady ${dailyAvgCompleted}.`
+                : `Maintain your steady pace of ${dailyAvgCompleted || 2} tasks per day.`,
+              'Schedule revision before your evening workload.',
+            ];
 
         const rawRecommendations =
           Array.isArray(parsed.recommendations) && parsed.recommendations.length >= 3
             ? parsed.recommendations.slice(0, 3)
-            : [fallbackRec1, fallbackRec2, 'Schedule revision before your evening workload.'];
+            : defaultRecs;
 
         const sanitizedRecommendations: string[] = rawRecommendations.map((rec: any) =>
           String(rec || '')
@@ -266,15 +510,21 @@ MANDATORY INSTRUCTIONS:
           recommendations: sanitizedRecommendations,
         });
 
+        const calculatedRate = sanitizedPlanned > 0
+          ? Math.round((sanitizedCompleted / sanitizedPlanned) * 100)
+          : 0;
+
         return {
           plannedTasks: sanitizedPlanned,
           completedTasks: sanitizedCompleted,
-          completionRate: Math.round((sanitizedCompleted / sanitizedPlanned) * 100),
+          completionRate: calculatedRate,
           strongestPeriod: sanitizedPeriod,
           frequentlyPostponed: sanitizedPostponed,
           studyDistribution: sanitizedDistribution,
           recommendations: sanitizedRecommendations,
-          coachNote: parsed.coachNote || 'Great momentum this week. Prioritize high-focus blocks for demanding subjects.',
+          coachNote: parsed.coachNote || (isCleanWeek
+            ? 'Welcome to your clean tracker! Start logging tasks today to build your real personal productivity history.'
+            : 'Great momentum this week. Prioritize high-focus blocks for demanding subjects.'),
           isAiGenerated: true,
           modelUsed: model,
           generatedAt: new Date().toISOString(),
@@ -312,3 +562,4 @@ MANDATORY INSTRUCTIONS:
 }
 
 export const aiCoachService = new AICoachService();
+

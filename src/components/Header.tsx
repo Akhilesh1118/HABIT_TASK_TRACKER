@@ -177,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-weekly-review-btn"
               onClick={onOpenWeeklyReview}
               className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-200/80 transition-colors shadow-2xs"
-              title="Open Weekly Productivity Review (37/42, 88%, 18h 25m focus & insights)"
+              title="Open Weekly Productivity Review & insights"
             >
               <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
               <span className="hidden sm:inline">Weekly Review</span>
