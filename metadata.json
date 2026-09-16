@@ -1,0 +1,8 @@
+{
+  "name": " Habit \u0026 Task Tracker final phase ",
+  "description": "Personal daily task and habit tracking web application with GitHub-style activity grid and streak metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
