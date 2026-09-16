@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { storageService, formatDateKey, parseDateKey } from './services/storageService';
 import { buildMonthGrid } from './utils/calendarUtils';
 import { Header } from './components/Header';
@@ -23,7 +23,7 @@ import { getCurrentIST } from './utils/timeUtils';
 
 export default function App() {
   // Use today's date from environment or client (Asia/Kolkata timezone)
-  const [todayDate] = useState<string>(() => {
+  const [todayDate, setTodayDate] = useState<string>(() => {
     return getCurrentIST().dateStr;
   });
 
@@ -37,6 +37,57 @@ export default function App() {
   const [calendarMonth, setCalendarMonth] = useState<number>(() => {
     return parseDateKey(todayDate).getMonth();
   });
+
+  // Synchronized refs to track live dates for reliable midnight rollover
+  const todayDateRef = useRef(todayDate);
+  const selectedDateRef = useRef(selectedDate);
+
+  useEffect(() => {
+    todayDateRef.current = todayDate;
+  }, [todayDate]);
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  // Midnight rollover & active day synchronization (Asia/Kolkata)
+  useEffect(() => {
+    const checkRollover = () => {
+      const currentToday = getCurrentIST().dateStr;
+      const prevToday = todayDateRef.current;
+
+      if (currentToday !== prevToday) {
+        // Date has rolled over in Asia/Kolkata
+        todayDateRef.current = currentToday;
+        setTodayDate(currentToday);
+
+        // If the user was viewing the previous "Today", automatically roll selectedDate over to the new Today
+        if (selectedDateRef.current === prevToday) {
+          selectedDateRef.current = currentToday;
+          setSelectedDate(currentToday);
+          const d = parseDateKey(currentToday);
+          setCalendarYear(d.getFullYear());
+          setCalendarMonth(d.getMonth());
+        }
+      }
+    };
+
+    // Run immediately on mount
+    checkRollover();
+
+    // Check periodically so rollover happens immediately when midnight arrives
+    const intervalId = setInterval(checkRollover, 1000);
+
+    // Also check on window focus and visibility change (e.g. laptop wake or tab switch after midnight)
+    window.addEventListener('focus', checkRollover);
+    document.addEventListener('visibilitychange', checkRollover);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', checkRollover);
+      document.removeEventListener('visibilitychange', checkRollover);
+    };
+  }, []);
 
   // Data state
   const [user, setUser] = useState(() => storageService.getUser());
@@ -215,8 +266,10 @@ export default function App() {
   };
 
   const handleGoToToday = () => {
-    setSelectedDate(todayDate);
-    const d = parseDateKey(todayDate);
+    const currentToday = getCurrentIST().dateStr;
+    setTodayDate(currentToday);
+    setSelectedDate(currentToday);
+    const d = parseDateKey(currentToday);
     setCalendarYear(d.getFullYear());
     setCalendarMonth(d.getMonth());
   };
@@ -240,7 +293,10 @@ export default function App() {
   };
 
   const handleCurrentMonth = () => {
-    const d = parseDateKey(todayDate);
+    const currentToday = getCurrentIST().dateStr;
+    setTodayDate(currentToday);
+    setSelectedDate(currentToday);
+    const d = parseDateKey(currentToday);
     setCalendarYear(d.getFullYear());
     setCalendarMonth(d.getMonth());
   };
@@ -356,7 +412,12 @@ export default function App() {
       storageService.resetToSampleData();
       setUser(storageService.getUser());
       setHabits(storageService.getHabits());
-      setSelectedDate(todayDate);
+      const currentToday = getCurrentIST().dateStr;
+      setTodayDate(currentToday);
+      setSelectedDate(currentToday);
+      const d = parseDateKey(currentToday);
+      setCalendarYear(d.getFullYear());
+      setCalendarMonth(d.getMonth());
       triggerRefresh();
     }
   };

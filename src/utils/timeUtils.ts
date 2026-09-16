@@ -17,8 +17,8 @@ export interface ISTDateTime {
  * Uses Intl.DateTimeFormat with hourCycle: 'h23' and includes a guaranteed
  * mathematical UTC+05:30 fallback that prevents midnight rollover bugs on any runtime.
  */
-export function getCurrentIST(): ISTDateTime {
-  const now = new Date();
+export function getCurrentIST(baseDate?: Date): ISTDateTime {
+  const now = baseDate || new Date();
 
   try {
     const formatter = new Intl.DateTimeFormat('en-IN', {

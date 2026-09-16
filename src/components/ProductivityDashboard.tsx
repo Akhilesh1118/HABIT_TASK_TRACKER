@@ -47,6 +47,7 @@ import {
   WeeklyReviewSummary,
 } from '../types';
 import { storageService, parseDateKey, formatDateKey } from '../services/storageService';
+import { getCurrentIST } from '../utils/timeUtils';
 import { WeeklyReviewSummaryCard } from './WeeklyReviewSummaryCard';
 import { WeeklyReviewModal } from './WeeklyReviewModal';
 import { AICoachCard } from './AICoachCard';
@@ -115,7 +116,8 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
     onSelectDate(formatDateKey(d));
   };
 
-  const isToday = selectedDate === todayDate;
+  const currentTodayDate = getCurrentIST().dateStr;
+  const isToday = selectedDate === currentTodayDate;
 
   // Selected date formatted string
   const formattedDateTitle = useMemo(() => {
@@ -276,7 +278,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               {!isToday && (
                 <button
                   id="analytics-jump-today-btn"
-                  onClick={() => onSelectDate(todayDate)}
+                  onClick={() => onSelectDate(currentTodayDate)}
                   className="ml-2 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors"
                 >
                   Today

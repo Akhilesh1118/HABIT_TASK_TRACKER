@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import { AICoachAnalysisResult, AICoachInputData } from '../../src/types';
 
 let aiClient: GoogleGenAI | null = null;
@@ -43,12 +43,15 @@ export function generateDeterministicCoachAnalysis(
   inputData: AICoachInputData,
   fallbackReason?: string
 ): AICoachAnalysisResult {
-  const plannedTasks = inputData.tasksPlanned || 42;
-  const completedTasks = inputData.tasksCompleted || 37;
+  const plannedTasks = inputData.tasksPlanned ?? 0;
+  const completedTasks = inputData.tasksCompleted ?? 0;
   const completionRate =
-    inputData.completionRate || Math.round((completedTasks / plannedTasks) * 100);
-  const strongestPeriod = inputData.strongestPeriod || '7 AM – 11 AM';
-  const frequentlyPostponed = inputData.frequentlyPostponedTask || 'Quant Practice';
+    plannedTasks > 0
+      ? Math.round((completedTasks / plannedTasks) * 100)
+      : (inputData.completionRate ?? 0);
+  const strongestPeriod =
+    inputData.strongestPeriod || (plannedTasks === 0 ? 'No activity recorded yet' : 'Morning (9 AM – 12 PM)');
+  const frequentlyPostponed = inputData.frequentlyPostponedTask || 'None';
 
   const studyDistribution =
     inputData.studyDistribution && inputData.studyDistribution.length > 0
@@ -57,21 +60,20 @@ export function generateDeterministicCoachAnalysis(
           percentage: s.percentage,
           color: s.color,
         }))
+      : [];
+
+  const recommendations =
+    plannedTasks === 0 && completedTasks === 0
+      ? [
+          'Create your first daily tasks and habits for today to start tracking.',
+          'Complete a focused study session to establish your productivity rhythm.',
+          'Check back at the end of the week for personalized AI Coach insights based on real activity.',
+        ]
       : [
-          { subject: 'GK', percentage: 62 },
-          { subject: 'Quant', percentage: 12 },
-          { subject: 'Reasoning', percentage: 18 },
-          { subject: 'English', percentage: 8 },
+          `Move ${frequentlyPostponed} to your strongest study period.`,
+          `Target steady consistency with ${Math.max(1, Math.round(plannedTasks / 7))} tasks per day.`,
+          `Schedule revision before your evening workload.`,
         ];
-
-  const dailyAvgPlanned = inputData.dailyAvgPlanned || 6;
-  const dailyAvgCompleted = inputData.dailyAvgCompleted || 4;
-
-  const recommendations = [
-    `Move ${frequentlyPostponed} to your strongest study period.`,
-    `Reduce daily planned tasks from ${dailyAvgPlanned} to ${dailyAvgCompleted}.`,
-    `Schedule revision before your evening workload.`,
-  ];
 
   const formattedText = formatCanonicalCoachText({
     plannedTasks,
@@ -90,7 +92,10 @@ export function generateDeterministicCoachAnalysis(
     frequentlyPostponed,
     studyDistribution,
     recommendations,
-    coachNote: `Great consistency this week with ${completedTasks} completed tasks. Protect your peak morning hours for high-friction subjects.`,
+    coachNote:
+      plannedTasks === 0 && completedTasks === 0
+        ? 'Welcome to your clean tracker! Start logging tasks today to build your real personal productivity history.'
+        : `Great consistency this week with ${completedTasks} completed tasks. Protect your peak hours for high-friction subjects.`,
     isAiGenerated: false,
     modelUsed: 'Built-in Productivity Coach Engine',
     generatedAt: new Date().toISOString(),
@@ -100,10 +105,9 @@ export function generateDeterministicCoachAnalysis(
 }
 
 const CANDIDATE_MODELS = [
-  'gemini-3.6-flash',
+  'gemini-3.1-flash-lite',
   'gemini-3.8-flash',
   'gemini-flash-latest',
-  'gemini-3.1-pro-preview',
 ];
 
 export class AICoachService {
@@ -121,12 +125,12 @@ export class AICoachService {
       );
     }
 
-    const plannedTasks = inputData.tasksPlanned || 42;
-    const completedTasks = inputData.tasksCompleted || 37;
-    const strongestPeriod = inputData.strongestPeriod || '7 AM – 11 AM';
-    const frequentlyPostponed = inputData.frequentlyPostponedTask || 'Quant Practice';
-    const dailyAvgPlanned = inputData.dailyAvgPlanned || 6;
-    const dailyAvgCompleted = inputData.dailyAvgCompleted || 4;
+    const plannedTasks = inputData.tasksPlanned ?? 0;
+    const completedTasks = inputData.tasksCompleted ?? 0;
+    const strongestPeriod = inputData.strongestPeriod || (plannedTasks === 0 ? 'No activity recorded yet' : 'Morning (9 AM – 12 PM)');
+    const frequentlyPostponed = inputData.frequentlyPostponedTask || 'None';
+    const dailyAvgPlanned = inputData.dailyAvgPlanned ?? (plannedTasks > 0 ? Math.round(plannedTasks / 7) : 0);
+    const dailyAvgCompleted = inputData.dailyAvgCompleted ?? (completedTasks > 0 ? Math.round(completedTasks / 7) : 0);
 
     const distributionString = (inputData.studyDistribution || [])
       .map((s) => `${s.subject}: ${s.percentage}% (${s.formattedDuration || ''})`)
@@ -150,63 +154,69 @@ REAL APPLICATION DATA (DO NOT MODIFY THESE FIGURES):
 MANDATORY INSTRUCTIONS:
 1. Ground truth fidelity: Set plannedTasks to exactly ${plannedTasks}, completedTasks to exactly ${completedTasks}, strongestPeriod to "${strongestPeriod}", frequentlyPostponed to "${frequentlyPostponed}".
 2. Set studyDistribution subjects and percentages matching the real data: ${distributionString}.
-3. Create exactly 3 concise, impactful, numbered recommendations following this exact guidance:
-   - Recommendation 1: Move "${frequentlyPostponed}" to your strongest study period.
-   - Recommendation 2: Reduce daily planned tasks from ${dailyAvgPlanned} to ${dailyAvgCompleted}.
+3. Provide exactly 3 concise, impactful recommendations without leading numbers:
+   - Recommendation 1: ${frequentlyPostponed !== 'None' ? `Move "${frequentlyPostponed}" to your strongest study period.` : 'Schedule your highest-priority subject during your peak study period.'}
+   - Recommendation 2: ${dailyAvgPlanned > dailyAvgCompleted ? `Align daily planned tasks from ${dailyAvgPlanned} to a steady ${dailyAvgCompleted}.` : `Maintain your steady pace of ${dailyAvgCompleted || 2} tasks per day.`}
    - Recommendation 3: Schedule revision before your evening workload.
 4. Provide a supportive 1-2 sentence coachNote.`;
 
     let lastError: any = null;
 
-    // Try each candidate model in order (e.g. gemini-3.6-flash, gemini-3.8-flash, gemini-flash-latest)
+    // Try candidate models in order: gemini-3.1-flash-lite (fastest, high resilience), gemini-3.8-flash, gemini-flash-latest
     for (const model of CANDIDATE_MODELS) {
       try {
+        const modelConfig: any = {
+          systemInstruction:
+            'You are an expert AI Productivity Coach for a student preparing for competitive exams. You synthesize real tracking data into clear weekly performance summaries and actionable guidance.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              plannedTasks: { type: Type.INTEGER },
+              completedTasks: { type: Type.INTEGER },
+              strongestPeriod: { type: Type.STRING },
+              frequentlyPostponed: { type: Type.STRING },
+              studyDistribution: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    subject: { type: Type.STRING },
+                    percentage: { type: Type.INTEGER },
+                  },
+                  required: ['subject', 'percentage'],
+                },
+              },
+              recommendations: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              coachNote: { type: Type.STRING },
+            },
+            required: [
+              'plannedTasks',
+              'completedTasks',
+              'strongestPeriod',
+              'frequentlyPostponed',
+              'studyDistribution',
+              'recommendations',
+            ],
+          },
+        };
+
+        if (model === 'gemini-3.8-flash') {
+          modelConfig.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+        }
+
         const generateCall = client.models.generateContent({
           model,
           contents: prompt,
-          config: {
-            systemInstruction:
-              'You are an expert AI Productivity Coach for a student preparing for competitive exams. You synthesize real tracking data into clear weekly performance summaries and actionable guidance.',
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                plannedTasks: { type: Type.INTEGER },
-                completedTasks: { type: Type.INTEGER },
-                strongestPeriod: { type: Type.STRING },
-                frequentlyPostponed: { type: Type.STRING },
-                studyDistribution: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      subject: { type: Type.STRING },
-                      percentage: { type: Type.INTEGER },
-                    },
-                    required: ['subject', 'percentage'],
-                  },
-                },
-                recommendations: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                coachNote: { type: Type.STRING },
-              },
-              required: [
-                'plannedTasks',
-                'completedTasks',
-                'strongestPeriod',
-                'frequentlyPostponed',
-                'studyDistribution',
-                'recommendations',
-              ],
-            },
-          },
+          config: modelConfig,
         });
 
-        // 8-second timeout protection per candidate call
+        // 15-second timeout protection per candidate call to give ample time for network & generation
         const timeoutCall = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout after 8000ms on model ${model}`)), 8000)
+          setTimeout(() => reject(new Error(`Latency exceeded 15000ms on model ${model}`)), 15000)
         );
 
         const response = (await Promise.race([generateCall, timeoutCall])) as any;
@@ -227,14 +237,25 @@ MANDATORY INSTRUCTIONS:
             ? parsed.studyDistribution
             : inputData.studyDistribution.map((s) => ({ subject: s.subject, percentage: s.percentage }));
 
-        const sanitizedRecommendations: string[] =
+        const fallbackRec1 =
+          sanitizedPostponed && sanitizedPostponed !== 'None'
+            ? `Move ${sanitizedPostponed} to your strongest study period.`
+            : 'Schedule your highest-priority subject during your peak study period.';
+        const fallbackRec2 =
+          dailyAvgPlanned > dailyAvgCompleted
+            ? `Align daily planned tasks from ${dailyAvgPlanned} to a steady ${dailyAvgCompleted}.`
+            : `Maintain your steady pace of ${dailyAvgCompleted || 2} tasks per day.`;
+
+        const rawRecommendations =
           Array.isArray(parsed.recommendations) && parsed.recommendations.length >= 3
             ? parsed.recommendations.slice(0, 3)
-            : [
-                `Move ${sanitizedPostponed} to your strongest study period.`,
-                `Reduce daily planned tasks from ${dailyAvgPlanned} to ${dailyAvgCompleted}.`,
-                `Schedule revision before your evening workload.`,
-              ];
+            : [fallbackRec1, fallbackRec2, 'Schedule revision before your evening workload.'];
+
+        const sanitizedRecommendations: string[] = rawRecommendations.map((rec: any) =>
+          String(rec || '')
+            .replace(/^\d+[\.\)]\s*/, '')
+            .trim()
+        );
 
         const formattedText = formatCanonicalCoachText({
           plannedTasks: sanitizedPlanned,
@@ -261,26 +282,28 @@ MANDATORY INSTRUCTIONS:
         };
       } catch (err: any) {
         lastError = err;
-        const isHighDemandOrUnavailable =
+        const isHighDemandOrTimeout =
           err?.status === 503 ||
           err?.code === 503 ||
           (typeof err?.message === 'string' &&
             (err.message.includes('503') ||
               err.message.includes('high demand') ||
               err.message.includes('UNAVAILABLE') ||
+              err.message.includes('Latency exceeded') ||
+              err.message.includes('Timeout') ||
               err.message.includes('ResourceExhausted') ||
               err.message.includes('429')));
 
-        if (isHighDemandOrUnavailable) {
-          console.warn(`[AICoachService] Model "${model}" temporarily experiencing high demand. Trying next model...`);
+        if (isHighDemandOrTimeout) {
+          console.info(`[AICoachService] Model "${model}" temporarily experiencing high demand or latency. Trying next candidate...`);
         } else {
-          console.warn(`[AICoachService] Model "${model}" failed: ${err?.message || err}. Trying next model...`);
+          console.info(`[AICoachService] Model "${model}" fallback trigger: ${err?.message || err}. Trying next candidate...`);
         }
       }
     }
 
     // Graceful fallback if all models experienced temporary demand spikes or errors
-    console.warn('[AICoachService] All Gemini models currently experiencing high demand or offline. Seamlessly serving high-fidelity deterministic coach analysis.');
+    console.info('[AICoachService] Gemini models currently experiencing high demand. Seamlessly serving high-fidelity deterministic coach analysis.');
     return generateDeterministicCoachAnalysis(
       inputData,
       `Gemini models temporarily busy (${lastError?.message || 'high demand'}). Generated with Built-in Coach Engine.`

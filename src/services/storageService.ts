@@ -27,6 +27,7 @@ import {
   AICoachAnalysisResult,
 } from '../types';
 import { authenticatedFetch } from '../utils/authClient';
+import { getCurrentIST } from '../utils/timeUtils';
 
 const STORAGE_KEYS = {
   USER: 'habits_app_user',
@@ -85,862 +86,20 @@ export function buildRevisionSteps(learnedDate: string, intervals: number[] = DE
   });
 }
 
-// Initial seed data generator
+// Initial seed data generator — clean state
 function seedInitialData() {
-  const user: User = {
-    id: 'usr_1',
-    name: 'Akhilesh Yadav',
-    email: 'akhilesh.cse@student.edu',
-    roleDescription: 'B.Tech CSE Student (SSC CGL & Tech Aspirant)',
-    createdAt: new Date('2026-08-01').toISOString(),
-  };
-
-  const habits: Habit[] = [
-    {
-      id: 'h_cgl',
-      userId: 'usr_1',
-      name: '📚 CGL Study & General Awareness',
-      description: 'Daily GS, Math & Reasoning problem sets',
-      category: 'SSC CGL',
-      frequency: 'daily',
-      target: '2 hours',
-      dueTime: '20:00',
-      startDate: '2026-09-01',
-      active: true,
-      createdAt: '2026-09-01T08:00:00Z',
-    },
-    {
-      id: 'h_coding',
-      userId: 'usr_1',
-      name: '💻 Coding & SQL Practice',
-      description: 'Solve 2 LeetCode problems or write SQL queries',
-      category: 'Technical',
-      frequency: 'daily',
-      target: '1 hour',
-      dueTime: '19:00',
-      startDate: '2026-09-01',
-      active: true,
-      createdAt: '2026-09-01T08:00:00Z',
-    },
-    {
-      id: 'h_english',
-      userId: 'usr_1',
-      name: '🗣️ English Speaking & Vocab',
-      description: '20 min editorial reading & speaking practice',
-      category: 'English',
-      frequency: 'daily',
-      target: '20 minutes',
-      dueTime: '21:00',
-      startDate: '2026-09-01',
-      active: true,
-      createdAt: '2026-09-01T08:00:00Z',
-    },
-    {
-      id: 'h_exercise',
-      userId: 'usr_1',
-      name: '🏃 Exercise / Jogging',
-      description: 'Evening workout or cardio session',
-      category: 'Health/Fitness',
-      frequency: 'daily',
-      target: '30 minutes',
-      dueTime: '19:00',
-      startDate: '2026-09-01',
-      active: true,
-      createdAt: '2026-09-01T08:00:00Z',
-    },
-    {
-      id: 'h_revision',
-      userId: 'usr_1',
-      name: '🔄 Night Revision & Next-day Plan',
-      description: 'Review formulas, mistakes notebook & schedule tomorrow',
-      category: 'Personal Learning',
-      frequency: 'daily',
-      target: '25 minutes',
-      startDate: '2026-09-01',
-      active: true,
-      createdAt: '2026-09-01T08:00:00Z',
-    },
-    {
-      id: 'h_meditation',
-      userId: 'usr_1',
-      name: '🧘 Morning Mindfulness & Focus',
-      description: 'Breathing exercise before study session',
-      category: 'Health/Fitness',
-      frequency: 'daily',
-      target: '10 minutes',
-      startDate: '2026-09-01',
-      active: true,
-      createdAt: '2026-09-01T08:00:00Z',
-    },
-  ];
-
-  // Seed tasks across recent dates in September 2026
-  const tasks: Task[] = [
-    // Sept 15 (Current day requested in prompt)
-    {
-      id: 't_15_1',
-      userId: 'usr_1',
-      title: 'CGL Preparation — Indian Polity',
-      category: 'SSC CGL',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: false,
-      duration: '1h 20m',
-      dueTime: '20:00',
-      recurringSchedule: 'daily',
-      isTopPriority: true,
-      priorityRank: 1,
-      isStudySession: true,
-      studySubject: 'GK',
-      studyTopic: 'Indian Polity',
-      studyDurationMinutes: 80,
-      questionsAttempted: 80,
-      questionsCorrect: 64,
-      accuracy: 80,
-      createdAt: '2026-09-15T06:00:00Z',
-      updatedAt: '2026-09-15T06:00:00Z',
-    },
-    {
-      id: 't_15_2',
-      userId: 'usr_1',
-      title: 'SQL practice — Joins, Group By & Subqueries',
-      category: 'Technical',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '30 minutes',
-      dueTime: '19:00',
-      recurringSchedule: 'weekdays',
-      isTopPriority: true,
-      priorityRank: 2,
-      createdAt: '2026-09-15T07:00:00Z',
-      updatedAt: '2026-09-15T09:30:00Z',
-    },
-    {
-      id: 't_15_3',
-      userId: 'usr_1',
-      title: 'English speaking — 20 min speech practice',
-      category: 'English',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '20 minutes',
-      dueTime: '21:00',
-      recurringSchedule: 'daily',
-      createdAt: '2026-09-15T07:30:00Z',
-      updatedAt: '2026-09-15T10:00:00Z',
-    },
-    {
-      id: 't_15_4',
-      userId: 'usr_1',
-      title: 'Exercise — Calisthenics & Jogging',
-      category: 'Health/Fitness',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '30 minutes',
-      dueTime: '19:00',
-      recurringSchedule: 'daily',
-      isTopPriority: true,
-      priorityRank: 3,
-      createdAt: '2026-09-15T08:00:00Z',
-      updatedAt: '2026-09-15T08:00:00Z',
-    },
-    {
-      id: 't_15_5',
-      userId: 'usr_1',
-      title: 'Read/revise yesterday’s topic & formulas',
-      category: 'Personal Learning',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '30 minutes',
-      dueTime: '22:00',
-      recurringSchedule: 'none',
-      createdAt: '2026-09-15T08:30:00Z',
-      updatedAt: '2026-09-15T11:00:00Z',
-    },
-    {
-      id: 't_15_quant',
-      userId: 'usr_1',
-      title: 'CGL Quantitative Aptitude — Profit, Loss & Discount',
-      category: 'SSC CGL',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '2h 00m',
-      dueTime: '16:00',
-      isStudySession: true,
-      studySubject: 'Quant',
-      studyTopic: 'Profit & Loss',
-      studyDurationMinutes: 120,
-      questionsAttempted: 60,
-      questionsCorrect: 51,
-      accuracy: 85,
-      createdAt: '2026-09-15T07:00:00Z',
-      updatedAt: '2026-09-15T12:00:00Z',
-    },
-    {
-      id: 't_15_reas',
-      userId: 'usr_1',
-      title: 'CGL Reasoning — Coding-Decoding & Matrix Puzzles',
-      category: 'SSC CGL',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '1h 40m',
-      dueTime: '18:00',
-      isStudySession: true,
-      studySubject: 'Reasoning',
-      studyTopic: 'Coding-Decoding',
-      studyDurationMinutes: 100,
-      questionsAttempted: 45,
-      questionsCorrect: 39,
-      accuracy: 87,
-      createdAt: '2026-09-15T08:00:00Z',
-      updatedAt: '2026-09-15T14:00:00Z',
-    },
-    {
-      id: 't_15_eng',
-      userId: 'usr_1',
-      title: 'English Practice — Error Spotting & Idioms',
-      category: 'English',
-      date: '2026-09-15',
-      dueDate: '2026-09-15',
-      completed: true,
-      duration: '1h 30m',
-      dueTime: '17:00',
-      isStudySession: true,
-      studySubject: 'English',
-      studyTopic: 'Error Spotting & Idioms',
-      studyDurationMinutes: 90,
-      questionsAttempted: 40,
-      questionsCorrect: 34,
-      accuracy: 85,
-      createdAt: '2026-09-15T08:30:00Z',
-      updatedAt: '2026-09-15T15:00:00Z',
-    },
-    {
-      id: 't_16_gk',
-      userId: 'usr_1',
-      title: 'Current Affairs Monthly Digest & Static GK Revision',
-      category: 'SSC CGL',
-      date: '2026-09-16',
-      dueDate: '2026-09-16',
-      completed: false,
-      duration: '2h 00m',
-      dueTime: '20:00',
-      isStudySession: true,
-      studySubject: 'GK',
-      studyTopic: 'Current Affairs',
-      studyDurationMinutes: 120,
-      questionsAttempted: 50,
-      questionsCorrect: 40,
-      accuracy: 80,
-      createdAt: '2026-09-15T09:00:00Z',
-      updatedAt: '2026-09-15T09:00:00Z',
-    },
-    // Sept 14 (100% completed)
-    {
-      id: 't_14_1',
-      userId: 'usr_1',
-      title: 'CGL Quantitative Aptitude — Ratio & Proportion',
-      category: 'SSC CGL',
-      date: '2026-09-14',
-      completed: true,
-      duration: '2h 10m',
-      isStudySession: true,
-      studySubject: 'Quant',
-      studyTopic: 'Ratio & Proportion',
-      studyDurationMinutes: 130,
-      questionsAttempted: 60,
-      questionsCorrect: 51,
-      accuracy: 85,
-      createdAt: '2026-09-14T07:00:00Z',
-      updatedAt: '2026-09-14T11:00:00Z',
-    },
-    {
-      id: 't_14_gk',
-      userId: 'usr_1',
-      title: 'CGL GK — Modern Indian History & National Movement',
-      category: 'SSC CGL',
-      date: '2026-09-14',
-      completed: true,
-      duration: '2h 00m',
-      isStudySession: true,
-      studySubject: 'GK',
-      studyTopic: 'Modern History',
-      studyDurationMinutes: 120,
-      questionsAttempted: 50,
-      questionsCorrect: 40,
-      accuracy: 80,
-      createdAt: '2026-09-14T08:00:00Z',
-      updatedAt: '2026-09-14T10:00:00Z',
-    },
-    {
-      id: 't_14_reas',
-      userId: 'usr_1',
-      title: 'CGL Reasoning — Syllogism & Blood Relations',
-      category: 'SSC CGL',
-      date: '2026-09-14',
-      completed: true,
-      duration: '2h 00m',
-      isStudySession: true,
-      studySubject: 'Reasoning',
-      studyTopic: 'Syllogism & Blood Relations',
-      studyDurationMinutes: 120,
-      questionsAttempted: 55,
-      questionsCorrect: 49,
-      accuracy: 89,
-      createdAt: '2026-09-14T10:00:00Z',
-      updatedAt: '2026-09-14T12:00:00Z',
-    },
-    {
-      id: 't_14_2',
-      userId: 'usr_1',
-      title: 'Database normalization 1NF, 2NF, 3NF tutorial',
-      category: 'Technical',
-      date: '2026-09-14',
-      completed: true,
-      duration: '45 minutes',
-      createdAt: '2026-09-14T08:00:00Z',
-      updatedAt: '2026-09-14T12:00:00Z',
-    },
-    {
-      id: 't_14_3',
-      userId: 'usr_1',
-      title: 'The Hindu Editorial Vocabulary & Reading Comprehension',
-      category: 'English',
-      date: '2026-09-14',
-      completed: true,
-      duration: '1h 45m',
-      isStudySession: true,
-      studySubject: 'English',
-      studyTopic: 'Reading Comprehension',
-      studyDurationMinutes: 105,
-      questionsAttempted: 50,
-      questionsCorrect: 42,
-      accuracy: 84,
-      createdAt: '2026-09-14T09:00:00Z',
-      updatedAt: '2026-09-14T13:00:00Z',
-    },
-    // Sept 13 (High activity)
-    {
-      id: 't_13_1',
-      userId: 'usr_1',
-      title: 'CGL Reasoning — Syllogism & Blood Relations',
-      category: 'SSC CGL',
-      date: '2026-09-13',
-      completed: true,
-      duration: '1.5 hours',
-      createdAt: '2026-09-13T08:00:00Z',
-      updatedAt: '2026-09-13T10:00:00Z',
-    },
-    {
-      id: 't_13_2',
-      userId: 'usr_1',
-      title: 'Build Express REST API mock routes',
-      category: 'Technical',
-      date: '2026-09-13',
-      completed: true,
-      duration: '1.5 hours',
-      createdAt: '2026-09-13T10:00:00Z',
-      updatedAt: '2026-09-13T12:30:00Z',
-    },
-    // Sept 12 (Medium activity)
-    {
-      id: 't_12_1',
-      userId: 'usr_1',
-      title: 'Current Affairs monthly digest revision',
-      category: 'SSC CGL',
-      date: '2026-09-12',
-      completed: true,
-      duration: '1 hour',
-      createdAt: '2026-09-12T09:00:00Z',
-      updatedAt: '2026-09-12T11:00:00Z',
-    },
-    {
-      id: 't_12_2',
-      userId: 'usr_1',
-      title: 'DSA Binary Search Tree problems',
-      category: 'Technical',
-      date: '2026-09-12',
-      completed: false,
-      duration: '1 hour',
-      createdAt: '2026-09-12T10:00:00Z',
-      updatedAt: '2026-09-12T10:00:00Z',
-    },
-    // Sept 11 (High activity)
-    {
-      id: 't_11_1',
-      userId: 'usr_1',
-      title: 'English Idioms & Phrases 50 cards',
-      category: 'English',
-      date: '2026-09-11',
-      completed: true,
-      duration: '30 minutes',
-      createdAt: '2026-09-11T08:00:00Z',
-      updatedAt: '2026-09-11T09:00:00Z',
-    },
-    {
-      id: 't_11_2',
-      userId: 'usr_1',
-      title: 'CGL Geography — River systems of India',
-      category: 'SSC CGL',
-      date: '2026-09-11',
-      completed: true,
-      duration: '1.5 hours',
-      createdAt: '2026-09-11T09:30:00Z',
-      updatedAt: '2026-09-11T12:00:00Z',
-    },
-    // Sept 10 (High activity)
-    {
-      id: 't_10_1',
-      userId: 'usr_1',
-      title: 'Operating Systems — Process Scheduling algorithms',
-      category: 'Technical',
-      date: '2026-09-10',
-      completed: true,
-      duration: '1 hour',
-      createdAt: '2026-09-10T08:00:00Z',
-      updatedAt: '2026-09-10T10:00:00Z',
-    },
-    {
-      id: 't_10_2',
-      userId: 'usr_1',
-      title: 'CGL Quantitative Aptitude — Profit & Loss',
-      category: 'SSC CGL',
-      date: '2026-09-10',
-      completed: true,
-      duration: '1.5 hours',
-      createdAt: '2026-09-10T10:00:00Z',
-      updatedAt: '2026-09-10T12:00:00Z',
-    },
-    // Sept 9 (Medium activity)
-    {
-      id: 't_09_1',
-      userId: 'usr_1',
-      title: 'Reading comprehension passages practice',
-      category: 'English',
-      date: '2026-09-09',
-      completed: true,
-      duration: '40 minutes',
-      createdAt: '2026-09-09T08:00:00Z',
-      updatedAt: '2026-09-09T09:30:00Z',
-    },
-    // Sept 8 (Medium activity)
-    {
-      id: 't_08_1',
-      userId: 'usr_1',
-      title: 'Computer Networks — TCP/IP 3-way handshake notes',
-      category: 'Technical',
-      date: '2026-09-08',
-      completed: true,
-      duration: '1 hour',
-      createdAt: '2026-09-08T08:00:00Z',
-      updatedAt: '2026-09-08T10:00:00Z',
-    },
-    // Earlier dates: Sept 3, Sept 4, Sept 6 (as shown in example grid)
-    {
-      id: 't_06_1',
-      userId: 'usr_1',
-      title: 'CGL Full Mock Test 1',
-      category: 'SSC CGL',
-      date: '2026-09-06',
-      completed: true,
-      duration: '2 hours',
-      createdAt: '2026-09-06T09:00:00Z',
-      updatedAt: '2026-09-06T12:00:00Z',
-    },
-    {
-      id: 't_04_1',
-      userId: 'usr_1',
-      title: 'SQL Window Functions Practice',
-      category: 'Technical',
-      date: '2026-09-04',
-      completed: true,
-      duration: '1 hour',
-      createdAt: '2026-09-04T10:00:00Z',
-      updatedAt: '2026-09-04T11:30:00Z',
-    },
-    {
-      id: 't_03_1',
-      userId: 'usr_1',
-      title: 'CGL Static GK — Classical Dances and Festivals',
-      category: 'SSC CGL',
-      date: '2026-09-03',
-      completed: true,
-      duration: '1.5 hours',
-      createdAt: '2026-09-03T10:00:00Z',
-      updatedAt: '2026-09-03T12:00:00Z',
-    },
-  ];
-
-  // Seed habit completions for consistency
-  const habitCompletions: HabitCompletion[] = [
-    { id: 'hc_15_1', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-15', completed: true },
-    { id: 'hc_15_2', habitId: 'h_english', userId: 'usr_1', date: '2026-09-15', completed: true },
-    { id: 'hc_14_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-14', completed: true },
-    { id: 'hc_14_2', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-14', completed: true },
-    { id: 'hc_14_3', habitId: 'h_exercise', userId: 'usr_1', date: '2026-09-14', completed: true },
-    { id: 'hc_13_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-13', completed: true },
-    { id: 'hc_13_2', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-13', completed: true },
-    { id: 'hc_13_3', habitId: 'h_english', userId: 'usr_1', date: '2026-09-13', completed: true },
-    { id: 'hc_12_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-12', completed: true },
-    { id: 'hc_12_2', habitId: 'h_exercise', userId: 'usr_1', date: '2026-09-12', completed: true },
-    { id: 'hc_11_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-11', completed: true },
-    { id: 'hc_11_2', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-11', completed: true },
-    { id: 'hc_10_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-10', completed: true },
-    { id: 'hc_10_2', habitId: 'h_english', userId: 'usr_1', date: '2026-09-10', completed: true },
-    { id: 'hc_09_1', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-09', completed: true },
-    { id: 'hc_08_1', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-08', completed: true },
-    { id: 'hc_06_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-06', completed: true },
-    { id: 'hc_04_1', habitId: 'h_coding', userId: 'usr_1', date: '2026-09-04', completed: true },
-    { id: 'hc_03_1', habitId: 'h_cgl', userId: 'usr_1', date: '2026-09-03', completed: true },
-  ];
-
-  const initialRevisions = getInitialSpacedRevisions();
-
-  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-  localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
-  localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-  localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify(habitCompletions));
-  localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify({ '2026-09-15': ['t_15_1', 't_15_2', 't_15_4'] }));
-  localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify(initialRevisions));
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify({}));
+  localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
 }
 
 export function getInitialSpacedRevisions(): TopicRevisionSchedule[] {
-  return [
-    {
-      id: 'rev_polity',
-      userId: 'usr_1',
-      subject: 'GK',
-      topic: 'Indian Polity',
-      learnedDate: '2026-09-15',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        {
-          stepIndex: 0,
-          dayOffset: 0,
-          label: 'Day 0',
-          scheduledDate: '2026-09-15',
-          completed: true,
-          completedAt: '2026-09-15T11:00:00Z',
-          notes: 'Preamble, Fundamental Rights & DPSP (1h 20m)',
-          questionsAttempted: 80,
-          questionsCorrect: 64,
-          accuracy: 80,
-        },
-        {
-          stepIndex: 1,
-          dayOffset: 1,
-          label: 'Day 1',
-          scheduledDate: '2026-09-16',
-          completed: false,
-        },
-        {
-          stepIndex: 2,
-          dayOffset: 3,
-          label: 'Day 3',
-          scheduledDate: '2026-09-18',
-          completed: false,
-        },
-        {
-          stepIndex: 3,
-          dayOffset: 7,
-          label: 'Day 7',
-          scheduledDate: '2026-09-22',
-          completed: false,
-        },
-        {
-          stepIndex: 4,
-          dayOffset: 14,
-          label: 'Day 14',
-          scheduledDate: '2026-09-29',
-          completed: false,
-        },
-        {
-          stepIndex: 5,
-          dayOffset: 30,
-          label: 'Day 30',
-          scheduledDate: '2026-10-15',
-          completed: false,
-        },
-      ],
-      currentStepIndex: 1,
-      nextRevisionDate: '2026-09-16',
-      status: 'active',
-      totalRevisionsCompleted: 1,
-      createdAt: '2026-09-15T09:00:00Z',
-      updatedAt: '2026-09-15T11:00:00Z',
-    },
-    // 12 revisions due today (2026-09-15)
-    {
-      id: 'rev_hist_1857',
-      userId: 'usr_1',
-      subject: 'GK',
-      topic: 'Modern History: Revolt of 1857 & Leaders',
-      learnedDate: '2026-09-14',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-14', completed: true, completedAt: '2026-09-14T10:00:00Z', questionsAttempted: 50, questionsCorrect: 42, accuracy: 84 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-17', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-21', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-28', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-14', completed: false },
-      ],
-      currentStepIndex: 1,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 1,
-      createdAt: '2026-09-14T09:00:00Z',
-      updatedAt: '2026-09-14T10:00:00Z',
-    },
-    {
-      id: 'rev_quant_ratio',
-      userId: 'usr_1',
-      subject: 'Quant',
-      topic: 'Ratio, Proportion & Partnerships',
-      learnedDate: '2026-09-14',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-14', completed: true, completedAt: '2026-09-14T12:00:00Z', questionsAttempted: 40, questionsCorrect: 36, accuracy: 90 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-17', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-21', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-28', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-14', completed: false },
-      ],
-      currentStepIndex: 1,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 1,
-      createdAt: '2026-09-14T11:00:00Z',
-      updatedAt: '2026-09-14T12:00:00Z',
-    },
-    {
-      id: 'rev_reas_syll',
-      userId: 'usr_1',
-      subject: 'Reasoning',
-      topic: 'Syllogisms & Venn Diagrams',
-      learnedDate: '2026-09-14',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-14', completed: true, completedAt: '2026-09-14T15:00:00Z', questionsAttempted: 45, questionsCorrect: 40, accuracy: 89 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-17', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-21', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-28', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-14', completed: false },
-      ],
-      currentStepIndex: 1,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 1,
-      createdAt: '2026-09-14T14:00:00Z',
-      updatedAt: '2026-09-14T15:00:00Z',
-    },
-    {
-      id: 'rev_eng_vocab',
-      userId: 'usr_1',
-      subject: 'English',
-      topic: 'One-Word Substitutions & Idioms Set 1',
-      learnedDate: '2026-09-14',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-14', completed: true, completedAt: '2026-09-14T17:00:00Z', questionsAttempted: 60, questionsCorrect: 52, accuracy: 87 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-17', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-21', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-28', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-14', completed: false },
-      ],
-      currentStepIndex: 1,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 1,
-      createdAt: '2026-09-14T16:00:00Z',
-      updatedAt: '2026-09-14T17:00:00Z',
-    },
-    {
-      id: 'rev_quant_tsd',
-      userId: 'usr_1',
-      subject: 'Quant',
-      topic: 'Time, Speed & Distance: Trains & Boats',
-      learnedDate: '2026-09-12',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-12', completed: true, completedAt: '2026-09-12T10:00:00Z', questionsAttempted: 50, questionsCorrect: 42, accuracy: 84 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-13', completed: true, completedAt: '2026-09-13T11:00:00Z', questionsAttempted: 30, questionsCorrect: 27, accuracy: 90 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-19', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-26', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-12', completed: false },
-      ],
-      currentStepIndex: 2,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 2,
-      createdAt: '2026-09-12T09:00:00Z',
-      updatedAt: '2026-09-13T11:00:00Z',
-    },
-    {
-      id: 'rev_reas_blood',
-      userId: 'usr_1',
-      subject: 'Reasoning',
-      topic: 'Blood Relations & Family Tree Deduction',
-      learnedDate: '2026-09-12',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-12', completed: true, completedAt: '2026-09-12T14:00:00Z', questionsAttempted: 40, questionsCorrect: 36, accuracy: 90 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-13', completed: true, completedAt: '2026-09-13T14:00:00Z', questionsAttempted: 25, questionsCorrect: 23, accuracy: 92 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-19', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-26', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-12', completed: false },
-      ],
-      currentStepIndex: 2,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 2,
-      createdAt: '2026-09-12T13:00:00Z',
-      updatedAt: '2026-09-13T14:00:00Z',
-    },
-    {
-      id: 'rev_geo_rivers',
-      userId: 'usr_1',
-      subject: 'GK',
-      topic: 'Physical Geography: Himalayan & Peninsular Rivers',
-      learnedDate: '2026-09-12',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-12', completed: true, completedAt: '2026-09-12T16:00:00Z', questionsAttempted: 50, questionsCorrect: 41, accuracy: 82 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-13', completed: true, completedAt: '2026-09-13T16:00:00Z', questionsAttempted: 30, questionsCorrect: 26, accuracy: 87 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-19', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-26', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-12', completed: false },
-      ],
-      currentStepIndex: 2,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 2,
-      createdAt: '2026-09-12T15:00:00Z',
-      updatedAt: '2026-09-13T16:00:00Z',
-    },
-    {
-      id: 'rev_eng_voice',
-      userId: 'usr_1',
-      subject: 'English',
-      topic: 'Active & Passive Voice Transformation Rules',
-      learnedDate: '2026-09-12',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-12', completed: true, completedAt: '2026-09-12T18:00:00Z', questionsAttempted: 40, questionsCorrect: 35, accuracy: 88 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-13', completed: true, completedAt: '2026-09-13T18:00:00Z', questionsAttempted: 25, questionsCorrect: 23, accuracy: 92 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-19', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-26', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-12', completed: false },
-      ],
-      currentStepIndex: 2,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 2,
-      createdAt: '2026-09-12T17:00:00Z',
-      updatedAt: '2026-09-13T18:00:00Z',
-    },
-    {
-      id: 'rev_tech_sql',
-      userId: 'usr_1',
-      subject: 'Technical',
-      topic: 'SQL Window Functions & Aggregations',
-      learnedDate: '2026-09-08',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-08', completed: true, completedAt: '2026-09-08T10:00:00Z', questionsAttempted: 20, questionsCorrect: 18, accuracy: 90 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-09', completed: true, completedAt: '2026-09-09T10:00:00Z', questionsAttempted: 15, questionsCorrect: 14, accuracy: 93 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-11', completed: true, completedAt: '2026-09-11T10:00:00Z', questionsAttempted: 15, questionsCorrect: 14, accuracy: 93 },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-22', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-08', completed: false },
-      ],
-      currentStepIndex: 3,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 3,
-      createdAt: '2026-09-08T09:00:00Z',
-      updatedAt: '2026-09-11T10:00:00Z',
-    },
-    {
-      id: 'rev_hist_ancient',
-      userId: 'usr_1',
-      subject: 'GK',
-      topic: 'Ancient History: Indus Valley & Vedic Period',
-      learnedDate: '2026-09-08',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-08', completed: true, completedAt: '2026-09-08T14:00:00Z', questionsAttempted: 50, questionsCorrect: 43, accuracy: 86 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-09', completed: true, completedAt: '2026-09-09T14:00:00Z', questionsAttempted: 30, questionsCorrect: 27, accuracy: 90 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-11', completed: true, completedAt: '2026-09-11T14:00:00Z', questionsAttempted: 30, questionsCorrect: 28, accuracy: 93 },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-22', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-08', completed: false },
-      ],
-      currentStepIndex: 3,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 3,
-      createdAt: '2026-09-08T13:00:00Z',
-      updatedAt: '2026-09-11T14:00:00Z',
-    },
-    {
-      id: 'rev_quant_geom',
-      userId: 'usr_1',
-      subject: 'Quant',
-      topic: 'Geometry: Circles, Tangents & Triangles Theorems',
-      learnedDate: '2026-09-01',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-09-01', completed: true, completedAt: '2026-09-01T10:00:00Z', questionsAttempted: 45, questionsCorrect: 38, accuracy: 84 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-09-02', completed: true, completedAt: '2026-09-02T10:00:00Z', questionsAttempted: 25, questionsCorrect: 23, accuracy: 92 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-09-04', completed: true, completedAt: '2026-09-04T10:00:00Z', questionsAttempted: 25, questionsCorrect: 23, accuracy: 92 },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-09-08', completed: true, completedAt: '2026-09-08T10:00:00Z', questionsAttempted: 25, questionsCorrect: 24, accuracy: 96 },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-09-15', completed: false },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-10-01', completed: false },
-      ],
-      currentStepIndex: 4,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 4,
-      createdAt: '2026-09-01T09:00:00Z',
-      updatedAt: '2026-09-08T10:00:00Z',
-    },
-    {
-      id: 'rev_econ_fiscal',
-      userId: 'usr_1',
-      subject: 'GK',
-      topic: 'Indian Economy: Fiscal Policy & GST Framework',
-      learnedDate: '2026-08-16',
-      customIntervals: [0, 1, 3, 7, 14, 30],
-      steps: [
-        { stepIndex: 0, dayOffset: 0, label: 'Day 0', scheduledDate: '2026-08-16', completed: true, completedAt: '2026-08-16T10:00:00Z', questionsAttempted: 50, questionsCorrect: 42, accuracy: 84 },
-        { stepIndex: 1, dayOffset: 1, label: 'Day 1', scheduledDate: '2026-08-17', completed: true, completedAt: '2026-08-17T10:00:00Z', questionsAttempted: 25, questionsCorrect: 23, accuracy: 92 },
-        { stepIndex: 2, dayOffset: 3, label: 'Day 3', scheduledDate: '2026-08-19', completed: true, completedAt: '2026-08-19T10:00:00Z', questionsAttempted: 25, questionsCorrect: 23, accuracy: 92 },
-        { stepIndex: 3, dayOffset: 7, label: 'Day 7', scheduledDate: '2026-08-23', completed: true, completedAt: '2026-08-23T10:00:00Z', questionsAttempted: 25, questionsCorrect: 24, accuracy: 96 },
-        { stepIndex: 4, dayOffset: 14, label: 'Day 14', scheduledDate: '2026-08-30', completed: true, completedAt: '2026-08-30T10:00:00Z', questionsAttempted: 25, questionsCorrect: 24, accuracy: 96 },
-        { stepIndex: 5, dayOffset: 30, label: 'Day 30', scheduledDate: '2026-09-15', completed: false },
-      ],
-      currentStepIndex: 5,
-      nextRevisionDate: '2026-09-15',
-      status: 'active',
-      totalRevisionsCompleted: 5,
-      createdAt: '2026-08-16T09:00:00Z',
-      updatedAt: '2026-08-30T10:00:00Z',
-    },
-  ];
+  return [];
 }
 
 // Storage service class
@@ -951,6 +110,20 @@ class StorageService {
 
   private ensureInitialized(): void {
     if (typeof window === 'undefined') return;
+    const CLEAN_START_KEY = 'habits_clean_start_2026_v1';
+    if (localStorage.getItem(CLEAN_START_KEY) !== 'true') {
+      localStorage.removeItem(STORAGE_KEYS.TASKS);
+      localStorage.removeItem(STORAGE_KEYS.HABITS);
+      localStorage.removeItem(STORAGE_KEYS.HABIT_COMPLETIONS);
+      localStorage.removeItem(STORAGE_KEYS.DAILY_PRIORITIES);
+      localStorage.removeItem(STORAGE_KEYS.FOCUS_SESSIONS);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_FOCUS_TIMER);
+      localStorage.removeItem(STORAGE_KEYS.SPACED_REVISIONS);
+      localStorage.removeItem(STORAGE_KEYS.STREAK_PROTECTION);
+      localStorage.removeItem(STORAGE_KEYS.AI_COACH_ANALYSIS);
+      localStorage.setItem(CLEAN_START_KEY, 'true');
+    }
+
     const isInit = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
     if (!isInit) {
       if (!localStorage.getItem(STORAGE_KEYS.TASKS)) localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([]));
@@ -958,6 +131,7 @@ class StorageService {
       if (!localStorage.getItem(STORAGE_KEYS.HABIT_COMPLETIONS)) localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify([]));
       if (!localStorage.getItem(STORAGE_KEYS.DAILY_PRIORITIES)) localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify({}));
       if (!localStorage.getItem(STORAGE_KEYS.SPACED_REVISIONS)) localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify([]));
+      if (!localStorage.getItem(STORAGE_KEYS.FOCUS_SESSIONS)) localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
     }
   }
@@ -1317,10 +491,6 @@ class StorageService {
             derived[t.date].push(t.id);
           }
         }
-      }
-      if (!derived['2026-09-15']) {
-        const sept15Ids = tasks.filter(t => t.date === '2026-09-15').map(t => t.id);
-        derived['2026-09-15'] = sept15Ids.slice(0, 3);
       }
       localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(derived));
       return derived;
@@ -2007,14 +1177,14 @@ class StorageService {
     const completedItems = items.filter((i) => i.completed).length;
 
     // 1. Task Completion (Weight: 20%)
-    const taskRate = totalItems > 0 ? (completedItems / totalItems) * 100 : 100;
+    const taskRate = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
     const taskPoints = Math.round(taskRate * 0.20 * 10) / 10;
 
     // 2. Top 3 Priorities Execution (Weight: 25%)
     const top3Items = items.filter((i) => i.isTopPriority);
     const top3Total = top3Items.length > 0 ? top3Items.length : 3;
     const top3Completed = top3Items.filter((i) => i.completed).length;
-    const top3Rate = top3Items.length > 0 ? (top3Completed / top3Items.length) * 100 : (taskRate > 0 ? taskRate : 0);
+    const top3Rate = top3Items.length > 0 ? (top3Completed / top3Items.length) * 100 : 0;
     const top3Points = Math.round(top3Rate * 0.25 * 10) / 10;
 
     // 3. Focus Time (Weight: 20%)
@@ -2061,7 +1231,7 @@ class StorageService {
       }
     });
     // On-schedule bonus
-    let priorityRate = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 100;
+    let priorityRate = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
     // Adjust slightly for punctuality / execution quality
     if (completedItems >= 4 && top3Completed >= 2) {
       priorityRate = Math.min(100, Math.max(priorityRate, 88));
@@ -2073,9 +1243,9 @@ class StorageService {
     totalScore = Math.max(0, Math.min(100, totalScore));
 
     // Grade and status assessment
-    let grade = 'A';
-    let gradeColor = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-    let summaryPhrase = 'High Performance Execution';
+    let grade = 'C';
+    let gradeColor = 'text-stone-700 bg-stone-100 border-stone-200';
+    let summaryPhrase = totalScore === 0 ? 'No Activity Logged' : 'Needs Focus & Discipline';
 
     if (totalScore >= 90) {
       grade = 'A+';
@@ -2093,7 +1263,7 @@ class StorageService {
       grade = 'B';
       gradeColor = 'text-amber-700 bg-amber-50 border-amber-200';
       summaryPhrase = 'Moderate Progress';
-    } else {
+    } else if (totalScore > 0) {
       grade = 'C';
       gradeColor = 'text-stone-700 bg-stone-100 border-stone-200';
       summaryPhrase = 'Needs Focus & Discipline';
@@ -2255,7 +1425,7 @@ class StorageService {
         top3Total: dayScore.top3Total,
         focusMinutes: Math.round(dayScore.focusSeconds / 60),
         consistency: dayScore.consistencyPercentage,
-        isToday: dayStr === '2026-09-15',
+        isToday: dayStr === getCurrentIST().dateStr,
       });
 
       // Accumulate category items for this day
@@ -2471,7 +1641,7 @@ class StorageService {
    * - Practical data-driven insights derived strictly from stored data without fabrication.
    */
   public getWeeklyProductivityReview(
-    targetDateStr = '2026-09-15',
+    targetDateStr = getCurrentIST().dateStr,
     windowType: 'trailing7' | 'calendar' = 'trailing7'
   ): WeeklyReviewSummary {
     const allHabits = this.getHabits();
@@ -2797,15 +1967,15 @@ class StorageService {
   /**
    * Builds structured, verified application tracking facts for the AI Productivity Coach
    */
-  public getAICoachInputData(targetDateStr: string = '2026-09-15'): AICoachInputData {
+  public getAICoachInputData(targetDateStr: string = getCurrentIST().dateStr): AICoachInputData {
     const weeklyReview = this.getWeeklyProductivityReview(targetDateStr, 'trailing7');
-    const tasksPlanned = weeklyReview.tasksTotal || 42;
-    const tasksCompleted = weeklyReview.tasksCompleted || 37;
+    const tasksPlanned = weeklyReview.tasksTotal;
+    const tasksCompleted = weeklyReview.tasksCompleted;
     const completionRate =
-      weeklyReview.completionRate || Math.round((tasksCompleted / tasksPlanned) * 100);
+      tasksPlanned > 0 ? Math.round((tasksCompleted / tasksPlanned) * 100) : 0;
 
-    const dailyAvgPlanned = Math.max(1, Math.round(tasksPlanned / 7)); // e.g. 6
-    const dailyAvgCompleted = Math.max(1, Math.round(tasksCompleted / 7)); // e.g. 4 or 5
+    const dailyAvgPlanned = Math.round(tasksPlanned / 7);
+    const dailyAvgCompleted = Math.round(tasksCompleted / 7);
 
     // Analyze performance periods across the week
     const targetObj = parseDateKey(targetDateStr);
@@ -2965,7 +2135,7 @@ class StorageService {
    * Request weekly analysis from the server-side AI Coach API endpoint (/api/ai-coach)
    */
   public async fetchAICoachAnalysis(
-    targetDateStr: string = '2026-09-15',
+    targetDateStr: string = getCurrentIST().dateStr,
     forceRegenerate: boolean = false
   ): Promise<AICoachAnalysisResult> {
     const inputData = this.getAICoachInputData(targetDateStr);
@@ -3044,21 +2214,6 @@ class StorageService {
     const studyTasks = tasks.filter((t) => t.isStudySession && t.studySubject);
 
     if (studyTasks.length === 0) {
-      if (dateStr === '2026-09-15') {
-        return [
-          {
-            subject: 'GK',
-            studyMinutes: 80,
-            formattedDuration: '1h 20m',
-            questionsAttempted: 80,
-            questionsCorrect: 64,
-            accuracy: 80,
-            color: subjectColors['GK'],
-            tasksCount: 1,
-            topics: ['Indian Polity'],
-          },
-        ];
-      }
       return [];
     }
 
@@ -3255,260 +2410,14 @@ class StorageService {
   public getFocusSessions(): FocusSession[] {
     if (typeof window === 'undefined') return [];
     const data = localStorage.getItem(STORAGE_KEYS.FOCUS_SESSIONS);
-    
-    const initial: FocusSession[] = [
-      {
-        id: 'foc_seed_15_1',
-        taskId: 't_15_1',
-        taskTitle: '📚 CGL General Awareness — Modern History',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 50,
-        actualSecondsSpent: 3000,
-        date: '2026-09-15',
-        startedAt: '2026-09-15T09:00:00.000Z',
-        completedAt: '2026-09-15T09:50:00.000Z',
-        wasCompletedNaturally: true,
-        notes: 'Modern History Indian National Movement deep focus',
-      },
-      {
-        id: 'foc_seed_15_2',
-        taskId: 't_15_1',
-        taskTitle: '📚 CGL Polity & Constitution PYQ Drill',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 50,
-        actualSecondsSpent: 3000,
-        date: '2026-09-15',
-        startedAt: '2026-09-15T10:00:00.000Z',
-        completedAt: '2026-09-15T10:50:00.000Z',
-        wasCompletedNaturally: true,
-        notes: 'Completed 30 previous year questions on fundamental rights',
-      },
-      {
-        id: 'foc_seed_15_3',
-        taskId: 't_15_2',
-        taskTitle: '💻 SQL Joins, Group By & Subqueries Drill',
-        taskCategory: 'Technical',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 50,
-        actualSecondsSpent: 3000,
-        date: '2026-09-15',
-        startedAt: '2026-09-15T11:30:00.000Z',
-        completedAt: '2026-09-15T12:20:00.000Z',
-        wasCompletedNaturally: true,
-        notes: 'Solved 8 complex aggregation queries with Window functions',
-      },
-      {
-        id: 'foc_seed_15_4',
-        taskId: 't_15_3',
-        taskTitle: '🗣️ English Speech & Editorial Vocabulary',
-        taskCategory: 'English',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 50,
-        actualSecondsSpent: 3000,
-        date: '2026-09-15',
-        startedAt: '2026-09-15T14:00:00.000Z',
-        completedAt: '2026-09-15T14:50:00.000Z',
-        wasCompletedNaturally: true,
-        notes: '20 min speech practice + 30 min editorial reading',
-      },
-      {
-        id: 'foc_seed_14_1',
-        taskId: 't_14_1',
-        taskTitle: '📐 CGL Quantitative Aptitude — Ratio & Proportion',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 60,
-        actualSecondsSpent: 3600,
-        date: '2026-09-14',
-        startedAt: '2026-09-14T09:00:00.000Z',
-        completedAt: '2026-09-14T10:00:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_14_2',
-        taskId: 't_14_2',
-        taskTitle: '🗄️ Database Normalization 1NF, 2NF, 3NF',
-        taskCategory: 'Technical',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 60,
-        actualSecondsSpent: 3600,
-        date: '2026-09-14',
-        startedAt: '2026-09-14T10:30:00.000Z',
-        completedAt: '2026-09-14T11:30:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_14_3',
-        taskId: 't_14_3',
-        taskTitle: '📰 The Hindu Editorial Vocabulary & Idioms',
-        taskCategory: 'English',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 80,
-        actualSecondsSpent: 4800,
-        date: '2026-09-14',
-        startedAt: '2026-09-14T14:00:00.000Z',
-        completedAt: '2026-09-14T15:20:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_13_1',
-        taskId: 't_13_1',
-        taskTitle: '🧩 CGL Reasoning — Syllogism & Blood Relations',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 60,
-        actualSecondsSpent: 3600,
-        date: '2026-09-13',
-        startedAt: '2026-09-13T09:00:00.000Z',
-        completedAt: '2026-09-13T10:00:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_13_2',
-        taskId: 't_13_2',
-        taskTitle: '⚙️ Build Express REST API Endpoints',
-        taskCategory: 'Technical',
-        isHabit: false,
-        mode: '90/15',
-        targetFocusMinutes: 90,
-        actualSecondsSpent: 5400,
-        date: '2026-09-13',
-        startedAt: '2026-09-13T11:00:00.000Z',
-        completedAt: '2026-09-13T12:30:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_13_3',
-        taskId: 'h_english',
-        taskTitle: '🗣️ English Fluency Practice',
-        taskCategory: 'English',
-        isHabit: true,
-        mode: '25/5',
-        targetFocusMinutes: 30,
-        actualSecondsSpent: 1800,
-        date: '2026-09-13',
-        startedAt: '2026-09-13T15:00:00.000Z',
-        completedAt: '2026-09-13T15:30:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_12_1',
-        taskId: 't_12_1',
-        taskTitle: '🌍 Current Affairs Monthly Digest Revision',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 60,
-        actualSecondsSpent: 3600,
-        date: '2026-09-12',
-        startedAt: '2026-09-12T09:00:00.000Z',
-        completedAt: '2026-09-12T10:00:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_12_2',
-        taskId: 't_12_2',
-        taskTitle: '🌲 DSA Binary Search Tree Inorder Traversal',
-        taskCategory: 'Technical',
-        isHabit: false,
-        mode: '90/15',
-        targetFocusMinutes: 90,
-        actualSecondsSpent: 5400,
-        date: '2026-09-12',
-        startedAt: '2026-09-12T11:00:00.000Z',
-        completedAt: '2026-09-12T12:30:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_11_1',
-        taskId: 't_11_1',
-        taskTitle: '📖 English Idioms & Phrases Flashcards',
-        taskCategory: 'English',
-        isHabit: false,
-        mode: '25/5',
-        targetFocusMinutes: 45,
-        actualSecondsSpent: 2700,
-        date: '2026-09-11',
-        startedAt: '2026-09-11T09:00:00.000Z',
-        completedAt: '2026-09-11T09:45:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_11_2',
-        taskId: 't_11_2',
-        taskTitle: '🗺️ CGL Geography — River Systems of India',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '90/15',
-        targetFocusMinutes: 105,
-        actualSecondsSpent: 6300,
-        date: '2026-09-11',
-        startedAt: '2026-09-11T10:30:00.000Z',
-        completedAt: '2026-09-11T12:15:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_10_1',
-        taskId: 't_10_1',
-        taskTitle: '💻 Operating Systems — Process Scheduling',
-        taskCategory: 'Technical',
-        isHabit: false,
-        mode: '50/10',
-        targetFocusMinutes: 60,
-        actualSecondsSpent: 3600,
-        date: '2026-09-10',
-        startedAt: '2026-09-10T09:00:00.000Z',
-        completedAt: '2026-09-10T10:00:00.000Z',
-        wasCompletedNaturally: true,
-      },
-      {
-        id: 'foc_seed_10_2',
-        taskId: 't_10_2',
-        taskTitle: '📊 CGL Quantitative Aptitude — Profit & Loss',
-        taskCategory: 'SSC CGL',
-        isHabit: false,
-        mode: '90/15',
-        targetFocusMinutes: 110,
-        actualSecondsSpent: 6600,
-        date: '2026-09-10',
-        startedAt: '2026-09-10T10:30:00.000Z',
-        completedAt: '2026-09-10T12:20:00.000Z',
-        wasCompletedNaturally: true,
-      },
-    ];
-
-    if (!data) {
-      localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(initial));
-      return initial;
-    }
+    if (!data) return [];
 
     try {
       const parsed: FocusSession[] = JSON.parse(data);
-      // If user has only 1 or 2 sessions from early testing, merge with seed sessions
-      if (parsed.length < 5) {
-        const idSet = new Set(parsed.map((p) => p.id));
-        const merged = [...parsed];
-        for (const initSess of initial) {
-          if (!idSet.has(initSess.id)) {
-            merged.push(initSess);
-          }
-        }
-        localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(merged));
-        return merged;
-      }
-      return parsed;
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((s) => s && !s.id?.startsWith('foc_seed_'));
     } catch {
-      return initial;
+      return [];
     }
   }
 
@@ -3641,7 +2550,7 @@ class StorageService {
     return results;
   }
 
-  public getRevisionsDueTodayCount(todayDate: string = '2026-09-15'): number {
+  public getRevisionsDueTodayCount(todayDate: string = getCurrentIST().dateStr): number {
     return this.getRevisionsDueOnDate(todayDate).length;
   }
 
@@ -3711,7 +2620,7 @@ class StorageService {
     accuracy?: number;
   }): TopicRevisionSchedule {
     const schedules = this.getRevisionSchedules();
-    const learnedDate = params.learnedDate || '2026-09-15';
+    const learnedDate = params.learnedDate || getCurrentIST().dateStr;
     const intervals = params.customIntervals && params.customIntervals.length > 0 
       ? params.customIntervals 
       : DEFAULT_REVISION_INTERVALS;

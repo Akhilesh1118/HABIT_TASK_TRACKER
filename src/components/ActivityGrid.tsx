@@ -93,7 +93,7 @@ export const ActivityGrid: React.FC<ActivityGridProps> = ({
             onClick={onCurrentMonth}
             className="text-xs font-semibold px-2.5 py-1 rounded-md text-stone-700 hover:bg-stone-100 transition-colors"
           >
-            This Month
+            Today
           </button>
           <button
             id="next-month-btn"
