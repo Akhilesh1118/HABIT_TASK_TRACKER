@@ -14,6 +14,7 @@ import { syncRouter } from './server/routes/syncRoutes.ts';
 import { requireAuth } from './server/middleware/authMiddleware.ts';
 import { getCurrentIST } from './src/utils/timeUtils.ts';
 import diagnosticsHandler from './api/diagnostics.ts';
+import dbDiagnosticsHandler from './api/diagnostics/db.ts';
 
 async function startServer() {
   // Connect to MongoDB Atlas (if MONGODB_URI is provided), ensure personal account, and preserve data
@@ -70,6 +71,10 @@ async function startServer() {
   });
 
   // Diagnostic runtime filesystem & import checks
+  app.all('/api/diagnostics/db', (req: Request, res: Response) => {
+    dbDiagnosticsHandler(req, res);
+  });
+
   app.all('/api/diagnostics', (req: Request, res: Response) => {
     diagnosticsHandler(req, res);
   });
