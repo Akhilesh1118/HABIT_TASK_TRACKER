@@ -50,7 +50,7 @@
       "createdAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
       "frequency": "daily",
       "name": "Admin Daily Habit",
-      "updatedAt": "2026-09-17T10:03:53.913Z",
+      "updatedAt": "2026-09-17T12:18:00.563Z",
       "userId": "6aaa82ad324e4764b161c6dd"
     }
   ],
@@ -150,7 +150,7 @@
       "scheduledDate": "2026-09-17",
       "status": "pending",
       "title": "Admin MongoDB Task",
-      "updatedAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Thu Sep 17 2026 12:18:00 GMT+0000 (Coordinated Universal Time)",
       "userId": "6aaa82ad324e4764b161c6dd"
     }
   ],
@@ -351,6 +351,22 @@
       "passwordHash": "$2b$12$5BOiTibqER6vkM8idVeURuyKvA/6.dYpwlPhaAvzD6nD7CxE35Qda",
       "role": "user",
       "createdAt": "2026-09-17T09:45:41.258Z"
+    },
+    {
+      "id": "6aabce1ecd2288ecb9b570ea",
+      "email": "akash@gmail.com",
+      "name": "Akash Yadav",
+      "passwordHash": "$2b$12$U7XfUg4T6UuYkYS3sNMedu/nvQSoMzO1FIdYB/mMkVwY6U9aPzai6",
+      "role": "user",
+      "createdAt": "2026-09-17T11:25:18.906Z"
+    },
+    {
+      "id": "6aabce53cd2288ecb9b570eb",
+      "email": "gk@gmail.com",
+      "name": "Gaurav Yadav",
+      "passwordHash": "$2b$12$YkxH1KeKbL3KP1v3LQEmG.jbWZALIJwCjfY2t/R6.fSfx2pi1sKXi",
+      "role": "user",
+      "createdAt": "2026-09-17T11:26:11.206Z"
     }
   ]
 }
