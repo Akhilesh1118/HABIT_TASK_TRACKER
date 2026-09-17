@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { connectToDatabase, isMongoConnected } from './mongoService';
 import { UserModel } from '../models/User';
@@ -70,6 +71,15 @@ class AuthService {
 
   public resetFailedAttempts(identifier: string) {
     this.failedAttempts.delete(identifier);
+  }
+
+  /**
+   * Compare secrets without leaking where the first differing character occurs.
+   */
+  private secretsMatch(left: string, right: string): boolean {
+    const leftDigest = crypto.createHash('sha256').update(left).digest();
+    const rightDigest = crypto.createHash('sha256').update(right).digest();
+    return crypto.timingSafeEqual(leftDigest, rightDigest);
   }
 
   /**
@@ -206,13 +216,23 @@ class AuthService {
       };
     }
 
-    // Compare email
-    const isEmailMatch = user.email.toLowerCase() === normalizedEmail;
-    // Always run bcrypt comparison even on email mismatch to protect against timing attacks
-    const dummyHash = '$2a$12$e8Y5tGzR9dE1gY9p34wYyeuM72iI5Y5iQ5gPqU4Lw9X3H4z6e2/1e';
-    const hashToCompare = isEmailMatch ? user.passwordHash : dummyHash;
+    const configuredEmail = process.env.INITIAL_ADMIN_EMAIL?.toLowerCase().trim();
+    const configuredPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    const hasConfiguredCredentials = Boolean(configuredEmail && configuredPassword);
 
-    const isPasswordValid = await bcrypt.compare(passwordInput, hashToCompare);
+    // Deployment credentials are authoritative when both values are configured.
+    // This lets an administrator rotate credentials without being locked out by
+    // a password hash persisted during an earlier deployment.
+    const expectedEmail = hasConfiguredCredentials ? configuredEmail! : user.email.toLowerCase();
+    const isEmailMatch = expectedEmail === normalizedEmail;
+    const isPasswordValid = hasConfiguredCredentials
+      ? this.secretsMatch(passwordInput, configuredPassword!)
+      : await bcrypt.compare(
+          passwordInput,
+          isEmailMatch
+            ? user.passwordHash
+            : '$2a$12$e8Y5tGzR9dE1gY9p34wYyeuM72iI5Y5iQ5gPqU4Lw9X3H4z6e2/1e'
+        );
 
     if (!isEmailMatch || !isPasswordValid) {
       // Artificial delay to prevent rapid brute-forcing
@@ -241,7 +261,7 @@ class AuthService {
     const token = jwt.sign(
       {
         userId: user.id,
-        email: user.email,
+        email: expectedEmail,
       },
       this.getJwtSecret(),
       { expiresIn: '30d' }
@@ -251,7 +271,7 @@ class AuthService {
       success: true,
       user: {
         userId: user.id,
-        email: user.email,
+        email: expectedEmail,
       },
       token,
     };
