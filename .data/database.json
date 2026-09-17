@@ -11,7 +11,7 @@
       "frequency": "daily",
       "name": "Alice Meditation Habit",
       "startDate": "2026-09-17",
-      "updatedAt": "2026-09-17T08:54:22.339Z",
+      "updatedAt": "2026-09-17T12:32:54.406Z",
       "userId": "6aab86750c40c8afe7dead78"
     },
     {
@@ -25,7 +25,7 @@
       "frequency": "daily",
       "name": "User A Morning Run",
       "startDate": "2026-09-17",
-      "updatedAt": "2026-09-17T08:54:22.339Z",
+      "updatedAt": "2026-09-17T12:32:54.406Z",
       "userId": "6aabaa53f19cfe9b304c240a"
     },
     {
@@ -39,18 +39,18 @@
       "frequency": "daily",
       "name": "User A Private Habit",
       "startDate": "2026-09-17",
-      "updatedAt": "2026-09-17T08:54:22.339Z",
+      "updatedAt": "2026-09-17T12:32:54.406Z",
       "userId": "6aabaa70f19cfe9b304c240d"
     },
     {
-      "_id": "6aabbb0917fb5ef3726ef334",
-      "id": "habit_admin_test_1",
+      "_id": "6aabddf717fb5ef3726f089f",
+      "id": "h_test_1",
       "__v": 0,
       "active": true,
-      "createdAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
+      "createdAt": "Thu Sep 17 2026 12:32:54 GMT+0000 (Coordinated Universal Time)",
       "frequency": "daily",
-      "name": "Admin Daily Habit",
-      "updatedAt": "2026-09-17T12:18:00.563Z",
+      "name": "Habit 1",
+      "updatedAt": "2026-09-17T12:32:55.874Z",
       "userId": "6aaa82ad324e4764b161c6dd"
     }
   ],
@@ -138,20 +138,6 @@
       "status": "pending",
       "title": "User B Task",
       "updatedAt": "Thu Sep 17 2026 08:54:22 GMT+0000 (Coordinated Universal Time)"
-    },
-    {
-      "_id": "6aabbb0917fb5ef3726ef333",
-      "id": "task_admin_test_1",
-      "__v": 0,
-      "completed": false,
-      "completedAt": null,
-      "createdAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-09-17",
-      "scheduledDate": "2026-09-17",
-      "status": "pending",
-      "title": "Admin MongoDB Task",
-      "updatedAt": "Thu Sep 17 2026 12:18:00 GMT+0000 (Coordinated Universal Time)",
-      "userId": "6aaa82ad324e4764b161c6dd"
     }
   ],
   "habitCompletions": [
@@ -164,10 +150,14 @@
       "completed": true,
       "createdAt": "2026-09-17T06:19:34.734Z",
       "id": "hc_habit_1789625974362_9nmkz_2026-09-17",
-      "updatedAt": "2026-09-17T08:54:22.339Z"
+      "updatedAt": "2026-09-17T12:32:54.994Z"
     }
   ],
-  "dailyPriorities": {},
+  "dailyPriorities": {
+    "2026-09-17": [
+      "t_test_1"
+    ]
+  },
   "notificationLogs": [],
   "userAuth": {
     "id": "6aaa82ad324e4764b161c6dd",
@@ -180,7 +170,7 @@
       "id": "6aaa82ad324e4764b161c6dd",
       "email": "aky9842@gmail.com",
       "name": "Admin",
-      "passwordHash": "$2b$12$P11S.w2BBX.aqU0Cf0zW7e/VALNJwbdib4JzVTEb31ZBei1p9FIKS",
+      "passwordHash": "$2b$12$uO8RZoLkPSJhJI79KbE2beVf9asRJR3MJZr/ZcLPEwGUKk88TMyQW",
       "role": "admin",
       "createdAt": "2026-09-16T11:51:09.220Z"
     },

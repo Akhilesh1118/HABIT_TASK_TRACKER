@@ -105,17 +105,48 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       try {
         body = JSON.parse(body);
       } catch {
-        // fallback
+        body = null;
+      }
+    } else if (Buffer.isBuffer(body)) {
+      try {
+        body = JSON.parse(body.toString('utf8'));
+      } catch {
+        body = null;
       }
     }
 
-    const { tasks, habits, habitCompletions, dailyPriorities } = body || {};
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      const safeUserId = userId ? `${userId.slice(0, 8)}...` : 'unknown';
+      console.warn('[SyncRoutes POST Validation Failed: Invalid Body]', {
+        contentType: req.headers['content-type'] || 'unknown',
+        bodyType: typeof req.body,
+        user: safeUserId,
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or missing sync payload. Expected JSON object with tasks, habits, or habitCompletions.',
+      });
+    }
+
+    const { tasks, habits, habitCompletions, dailyPriorities } = body;
+
+    const hasTasks = Array.isArray(tasks);
+    const hasHabits = Array.isArray(habits);
+    const hasCompletions = Array.isArray(habitCompletions);
+    const hasPriorities = dailyPriorities !== undefined && typeof dailyPriorities === 'object' && !Array.isArray(dailyPriorities);
+
+    if (!hasTasks && !hasHabits && !hasCompletions && !hasPriorities) {
+      return res.status(400).json({
+        success: false,
+        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, dailyPriorities) must be provided.',
+      });
+    }
 
     // 1. Authoritative synchronization in MongoDB
     if (isMongoConnected()) {
       try {
         // Tasks
-        if (Array.isArray(tasks)) {
+        if (hasTasks) {
           const taskIds = tasks.map((t: Task) => t.id).filter(Boolean);
           // Delete any tasks in MongoDB that are NOT in the incoming list for this user
           await TaskModel.deleteMany({ userId, id: { $nin: taskIds } });
@@ -197,7 +228,13 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     }
 
     // 2. Also keep dbService in sync
-    const result = dbService.syncData({ tasks, habits, habitCompletions, dailyPriorities });
+    const syncPayload: any = {};
+    if (hasTasks) syncPayload.tasks = tasks;
+    if (hasHabits) syncPayload.habits = habits;
+    if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
+    if (hasPriorities) syncPayload.dailyPriorities = dailyPriorities;
+
+    const result = dbService.syncData(syncPayload);
 
     return res.status(200).json({
       success: true,

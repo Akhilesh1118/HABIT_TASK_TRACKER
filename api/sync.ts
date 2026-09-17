@@ -6,32 +6,64 @@ import { TaskModel, HabitModel, HabitCompletionModel } from '../server/models/Ha
 import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
 import type { Task, Habit, HabitCompletion } from '../src/types.ts';
 
-// Helper to safely parse body on Vercel
-async function parseRequestBody(req: any): Promise<any> {
-  if (req.body && typeof req.body === 'object') {
-    return req.body;
+// Helper to safely and robustly parse request body across Vercel serverless and Express environments
+async function parseRequestBody(req: any): Promise<{ parsed: any; error?: string }> {
+  // Case 1: req.body is already a pre-parsed JavaScript object (not null and not a Buffer)
+  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    return { parsed: req.body };
   }
+
+  // Case 2: req.body is a JSON string
   if (typeof req.body === 'string') {
+    const trimmed = req.body.trim();
+    if (!trimmed) {
+      return { parsed: null, error: 'Empty request body string' };
+    }
     try {
-      return JSON.parse(req.body);
-    } catch {
-      return {};
+      return { parsed: JSON.parse(trimmed) };
+    } catch (err: any) {
+      return { parsed: null, error: `Malformed JSON string: ${err?.message}` };
     }
   }
-  return new Promise((resolve) => {
-    let data = '';
-    req.on('data', (chunk: any) => {
-      data += chunk;
+
+  // Case 3: req.body is a Buffer
+  if (Buffer.isBuffer(req.body)) {
+    const str = req.body.toString('utf8').trim();
+    if (!str) {
+      return { parsed: null, error: 'Empty Buffer in request body' };
+    }
+    try {
+      return { parsed: JSON.parse(str) };
+    } catch (err: any) {
+      return { parsed: null, error: `Malformed JSON Buffer: ${err?.message}` };
+    }
+  }
+
+  // Case 4: Fallback for raw streams ONLY if req is an active, unread stream
+  if (req.on && typeof req.on === 'function' && !req.readableEnded && !req.complete) {
+    return new Promise((resolve) => {
+      let data = '';
+      req.on('data', (chunk: any) => {
+        data += chunk;
+      });
+      req.on('end', () => {
+        const trimmed = data.trim();
+        if (!trimmed) {
+          return resolve({ parsed: null, error: 'Empty request stream body' });
+        }
+        try {
+          resolve({ parsed: JSON.parse(trimmed) });
+        } catch (err: any) {
+          resolve({ parsed: null, error: `Malformed JSON stream: ${err?.message}` });
+        }
+      });
+      req.on('error', (err: any) => {
+        resolve({ parsed: null, error: `Stream read error: ${err?.message}` });
+      });
     });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(data));
-      } catch {
-        resolve({});
-      }
-    });
-    req.on('error', () => resolve({}));
-  });
+  }
+
+  return { parsed: null, error: 'Request body is absent or already consumed' };
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -126,13 +158,54 @@ export default async function handler(req: Request, res: Response) {
   }
 
   try {
-    const body = await parseRequestBody(req);
-    const { tasks, habits, habitCompletions, dailyPriorities } = body || {};
+    const { parsed: body, error: parseError } = await parseRequestBody(req);
+
+    // If request body is missing, malformed, or not an object, REJECT with HTTP 400
+    // NEVER treat a parsing failure as an empty sync payload (which would delete data)
+    if (parseError || !body || typeof body !== 'object' || Array.isArray(body)) {
+      const safeUserId = userId ? `${userId.slice(0, 8)}...` : 'unknown';
+      console.warn('[Sync API POST Validation Failed: Malformed / Missing Body]', {
+        method: req.method,
+        contentType: req.headers['content-type'] || 'unknown',
+        bodyType: typeof req.body,
+        isBuffer: Buffer.isBuffer(req.body),
+        parseError: parseError || 'Invalid payload (must be a JSON object)',
+        user: safeUserId,
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or missing sync payload. Expected JSON object with tasks, habits, or habitCompletions.',
+      });
+    }
+
+    const { tasks, habits, habitCompletions, dailyPriorities } = body;
+
+    const hasTasks = Array.isArray(tasks);
+    const hasHabits = Array.isArray(habits);
+    const hasCompletions = Array.isArray(habitCompletions);
+    const hasPriorities = dailyPriorities !== undefined && typeof dailyPriorities === 'object' && !Array.isArray(dailyPriorities);
+
+    // Protect against payloads that have no recognizable sync fields
+    if (!hasTasks && !hasHabits && !hasCompletions && !hasPriorities) {
+      const safeUserId = userId ? `${userId.slice(0, 8)}...` : 'unknown';
+      console.warn('[Sync API POST Validation Failed: No recognized sync fields]', {
+        method: req.method,
+        contentType: req.headers['content-type'] || 'unknown',
+        receivedKeys: Object.keys(body),
+        user: safeUserId,
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, dailyPriorities) must be provided.',
+      });
+    }
 
     if (isMongoConnected()) {
       try {
-        // Tasks
-        if (Array.isArray(tasks)) {
+        // Tasks - only synchronize if explicitly provided as an Array
+        if (hasTasks) {
           const taskIds = tasks.map((t: Task) => t.id).filter(Boolean);
           await TaskModel.deleteMany({ userId, id: { $nin: taskIds } });
 
@@ -164,8 +237,8 @@ export default async function handler(req: Request, res: Response) {
           }
         }
 
-        // Habits
-        if (Array.isArray(habits)) {
+        // Habits - only synchronize if explicitly provided as an Array
+        if (hasHabits) {
           const habitIds = habits.map((h: Habit) => h.id).filter(Boolean);
           await HabitModel.deleteMany({ userId, id: { $nin: habitIds } });
           await HabitCompletionModel.deleteMany({ userId, habitId: { $nin: habitIds } });
@@ -182,8 +255,8 @@ export default async function handler(req: Request, res: Response) {
           }
         }
 
-        // Habit Completions
-        if (Array.isArray(habitCompletions)) {
+        // Habit Completions - only synchronize if explicitly provided as an Array
+        if (hasCompletions) {
           const compKeys = habitCompletions.map((c: HabitCompletion) => `${c.habitId}_${c.date}`);
           const existing = await HabitCompletionModel.find({ userId }).lean();
           const toDelete = (existing as any[])
@@ -209,7 +282,13 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    const result = dbService.syncData({ tasks, habits, habitCompletions, dailyPriorities });
+    const syncPayload: any = {};
+    if (hasTasks) syncPayload.tasks = tasks;
+    if (hasHabits) syncPayload.habits = habits;
+    if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
+    if (hasPriorities) syncPayload.dailyPriorities = dailyPriorities;
+
+    const result = dbService.syncData(syncPayload);
 
     return res.status(200).json({
       success: true,
