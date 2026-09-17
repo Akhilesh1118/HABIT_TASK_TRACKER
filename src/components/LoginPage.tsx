@@ -39,10 +39,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         }),
       });
 
-      const data = await response.json();
+      let data: any = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+      } else {
+        try {
+          const rawText = await response.text();
+          data = JSON.parse(rawText);
+        } catch {
+          data = null;
+        }
+      }
 
-      if (!response.ok || !data.success) {
-        setErrorMessage(data.error || 'Invalid credentials. Please try again.');
+      if (!response.ok || !data?.success) {
+        const fallbackMsg =
+          response.status >= 500
+            ? 'A server error occurred. Please try again later.'
+            : 'Invalid credentials. Please try again.';
+        setErrorMessage(data?.error || fallbackMsg);
         setIsLoading(false);
         return;
       }
