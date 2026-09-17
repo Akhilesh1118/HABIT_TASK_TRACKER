@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Mail, User as UserIcon, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { setAuthToken } from '../utils/authClient';
 import { AppLogo } from './AppLogo';
@@ -17,9 +17,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lockoutSeconds, setLockoutSeconds] = useState<number>(0);
+
+  // Active countdown timer when rate limit cooldown is active
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          setErrorMessage(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutSeconds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutSeconds > 0) return;
     setErrorMessage(null);
 
     const trimmedEmail = email.trim();
@@ -74,6 +91,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       }
 
       if (!response.ok || !data?.success) {
+        if (data?.lockoutRemainingSeconds && data.lockoutRemainingSeconds > 0) {
+          setLockoutSeconds(data.lockoutRemainingSeconds);
+        }
         const fallbackMsg =
           response.status >= 500
             ? 'A server error occurred. Please try again later.'
@@ -159,7 +179,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {errorMessage && (
             <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200/70 rounded-xl flex items-start gap-2.5 text-rose-800 text-sm">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+              <span>
+                {lockoutSeconds > 0
+                  ? `Too many failed login attempts. Please wait ${lockoutSeconds} second${lockoutSeconds === 1 ? '' : 's'} before retrying.`
+                  : errorMessage}
+              </span>
             </div>
           )}
 

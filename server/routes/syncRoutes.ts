@@ -17,16 +17,28 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
     let habitCompletions: HabitCompletion[] = [];
     let dailyPriorities: Record<string, string[]> = {};
 
+    const isAdmin = (req as any).user.role === 'admin' || (req as any).user.email === (process.env.INITIAL_ADMIN_EMAIL || 'aky9842@gmail.com').toLowerCase().trim();
+
     if (isMongoConnected()) {
       try {
+        const userFilter = isAdmin
+          ? {
+              $or: [
+                { userId },
+                { userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } },
+                { userId: { $exists: false } },
+              ],
+            }
+          : { userId };
+
         const [mTasks, mHabits, mCompletions] = await Promise.all([
-          TaskModel.find({ userId }).sort({ createdAt: -1 }).lean(),
-          HabitModel.find({ userId }).sort({ createdAt: 1 }).lean(),
-          HabitCompletionModel.find({ userId }).lean(),
+          TaskModel.find(userFilter).sort({ createdAt: -1 }).lean(),
+          HabitModel.find(userFilter).sort({ createdAt: 1 }).lean(),
+          HabitCompletionModel.find(userFilter).lean(),
         ]);
         tasks = (mTasks as any[]).map((t) => ({
           ...t,
-          scheduledDate: t.scheduledDate || t.date || t.dueDate || (t.createdAt ? t.createdAt.split('T')[0] : ''),
+          scheduledDate: t.scheduledDate || t.date || t.dueDate || (t.createdAt ? String(t.createdAt).split('T')[0] : ''),
           status: t.status || (t.completed ? 'completed' : 'pending'),
           completed: Boolean(t.completed || t.status === 'completed'),
           completedAt: t.completedAt || (t.completed ? t.updatedAt || t.createdAt : null),
@@ -34,10 +46,19 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
         habits = mHabits as any[];
         habitCompletions = mCompletions as any[];
 
+        if (isAdmin) {
+          await Promise.all([
+            TaskModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
+            HabitModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
+            HabitCompletionModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
+          ]);
+        }
+
         // Diagnostic logging
         console.log('[BACKEND] GET /api/sync:', {
           endpoint: 'GET /api/sync',
           authenticatedUserId: userId,
+          isAdmin,
           mongoDatabase: mongoose.connection?.name || 'unknown',
           mongoDocumentsReturned: {
             tasks: tasks.length,
@@ -47,14 +68,14 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
         });
       } catch (err: any) {
         console.warn('[SyncRoutes] Error reading from MongoDB, falling back to local:', err?.message);
-        tasks = dbService.getTasks().filter((t) => t.userId === userId);
-        habits = dbService.getHabits().filter((h) => h.userId === userId);
-        habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId);
+        tasks = dbService.getTasks().filter((t) => t.userId === userId || (isAdmin && (!t.userId || t.userId === 'usr_admin')));
+        habits = dbService.getHabits().filter((h) => h.userId === userId || (isAdmin && (!h.userId || h.userId === 'usr_admin')));
+        habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId || (isAdmin && (!c.userId || c.userId === 'usr_admin')));
       }
     } else {
-      tasks = dbService.getTasks().filter((t) => t.userId === userId);
-      habits = dbService.getHabits().filter((h) => h.userId === userId);
-      habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId);
+      tasks = dbService.getTasks().filter((t) => t.userId === userId || (isAdmin && (!t.userId || t.userId === 'usr_admin')));
+      habits = dbService.getHabits().filter((h) => h.userId === userId || (isAdmin && (!h.userId || h.userId === 'usr_admin')));
+      habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId || (isAdmin && (!c.userId || c.userId === 'usr_admin')));
     }
 
     dailyPriorities = dbService.getDailyPriorities();

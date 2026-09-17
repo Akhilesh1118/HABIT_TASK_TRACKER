@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express, { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import { createServer as createViteServer } from 'vite';
@@ -13,6 +13,7 @@ import { habitRouter } from './server/routes/habitRoutes.ts';
 import { syncRouter } from './server/routes/syncRoutes.ts';
 import { requireAuth } from './server/middleware/authMiddleware.ts';
 import { getCurrentIST } from './src/utils/timeUtils.ts';
+import diagnosticsHandler from './api/diagnostics.ts';
 
 async function startServer() {
   // Connect to MongoDB Atlas (if MONGODB_URI is provided), ensure personal account, and preserve data
@@ -66,6 +67,11 @@ async function startServer() {
       service: 'Habit & Task Tracker API',
       ist,
     });
+  });
+
+  // Diagnostic runtime filesystem & import checks
+  app.all('/api/diagnostics', (req: Request, res: Response) => {
+    diagnosticsHandler(req, res);
   });
 
   // AI Productivity Coach (Protected)

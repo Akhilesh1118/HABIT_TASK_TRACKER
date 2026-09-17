@@ -41,6 +41,17 @@
       "startDate": "2026-09-17",
       "updatedAt": "2026-09-17T08:54:22.339Z",
       "userId": "6aabaa70f19cfe9b304c240d"
+    },
+    {
+      "_id": "6aabbb0917fb5ef3726ef334",
+      "id": "habit_admin_test_1",
+      "__v": 0,
+      "active": true,
+      "createdAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
+      "frequency": "daily",
+      "name": "Admin Daily Habit",
+      "updatedAt": "2026-09-17T10:03:53.913Z",
+      "userId": "6aaa82ad324e4764b161c6dd"
     }
   ],
   "tasks": [
@@ -127,6 +138,20 @@
       "status": "pending",
       "title": "User B Task",
       "updatedAt": "Thu Sep 17 2026 08:54:22 GMT+0000 (Coordinated Universal Time)"
+    },
+    {
+      "_id": "6aabbb0917fb5ef3726ef333",
+      "id": "task_admin_test_1",
+      "__v": 0,
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-17",
+      "scheduledDate": "2026-09-17",
+      "status": "pending",
+      "title": "Admin MongoDB Task",
+      "updatedAt": "Thu Sep 17 2026 10:03:53 GMT+0000 (Coordinated Universal Time)",
+      "userId": "6aaa82ad324e4764b161c6dd"
     }
   ],
   "habitCompletions": [
@@ -155,7 +180,7 @@
       "id": "6aaa82ad324e4764b161c6dd",
       "email": "aky9842@gmail.com",
       "name": "Admin",
-      "passwordHash": "$2b$12$KR0eZa9JUCrqDDz0V5FBq.EVHSFEbpDlnqUQxYcHvr5ZcZOlxYqaa",
+      "passwordHash": "$2b$12$P11S.w2BBX.aqU0Cf0zW7e/VALNJwbdib4JzVTEb31ZBei1p9FIKS",
       "role": "admin",
       "createdAt": "2026-09-16T11:51:09.220Z"
     },
