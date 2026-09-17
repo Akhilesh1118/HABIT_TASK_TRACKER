@@ -135,10 +135,8 @@ export class AICoachService {
         weekStartDate = startD.toISOString().split('T')[0];
       }
 
-      // Query MongoDB tasks for authenticated user (and legacy usr_1 alias)
-      const mongoTasks = await TaskModel.find({
-        $or: [{ userId }, { userId: 'usr_1' }],
-      }).lean();
+      // Query MongoDB tasks for authenticated user
+      const mongoTasks = await TaskModel.find({ userId }).lean();
 
       // Filter tasks within the review week window
       const weekTasks = (mongoTasks as any[]).filter((t) => {
@@ -196,7 +194,7 @@ export class AICoachService {
 
       // Authoritative habits and completions from MongoDB
       const habits = await HabitModel.find({
-        $or: [{ userId }, { userId: 'usr_1' }],
+        userId,
         active: true,
       }).lean();
 
@@ -211,6 +209,7 @@ export class AICoachService {
       if (habits.length > 0) {
         const habitIds = habits.map((h: any) => h.id);
         const completions = await HabitCompletionModel.find({
+          userId,
           habitId: { $in: habitIds },
           date: { $gte: weekStartDate, $lte: weekEndDate },
           completed: true,

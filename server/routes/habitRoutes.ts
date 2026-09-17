@@ -16,7 +16,7 @@ habitRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       const mongoHabits = await HabitModel.find({ userId }).sort({ createdAt: 1 }).lean();
       habits = mongoHabits as any[];
     } catch {
-      habits = dbService.getHabits().filter((h) => h.userId === userId || !h.userId);
+      habits = dbService.getHabits().filter((h) => h.userId === userId);
     }
 
     return res.json({
@@ -168,29 +168,36 @@ habitRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
+    let deleted = false;
     try {
       const result = await HabitModel.deleteOne({ id: habitId, userId });
-      await HabitCompletionModel.deleteMany({ habitId, userId });
-
-      if (result.deletedCount === 0) {
-        const currentHabits = dbService.getHabits();
-        const exists = currentHabits.some((h) => h.id === habitId);
-        if (!exists) {
-          return res.status(404).json({
-            success: false,
-            error: 'Habit not found',
-          });
-        }
+      if (result.deletedCount && result.deletedCount > 0) {
+        deleted = true;
+        await HabitCompletionModel.deleteMany({ habitId, userId });
       }
     } catch (dbErr: any) {
       console.warn('[HabitRoutes] MongoDB delete warning:', dbErr?.message);
     }
 
-    const remainingHabits = dbService.getHabits().filter((h) => h.id !== habitId);
+    const currentHabits = dbService.getHabits();
+    const existsInDb = currentHabits.some((h) => h.id === habitId && h.userId === userId);
+    if (existsInDb) {
+      deleted = true;
+    }
+    const remainingHabits = currentHabits.filter((h) => !(h.id === habitId && h.userId === userId));
     dbService.syncHabits(remainingHabits);
 
-    const remainingCompletions = dbService.getHabitCompletions().filter((c) => c.habitId !== habitId);
+    const remainingCompletions = dbService.getHabitCompletions().filter(
+      (c) => !(c.habitId === habitId && c.userId === userId)
+    );
     dbService.syncHabitCompletions(remainingCompletions);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Habit not found',
+      });
+    }
 
     return res.json({
       success: true,
@@ -214,7 +221,7 @@ habitRouter.get('/completions', requireAuth, async (req: Request, res: Response)
       const mongoCompletions = await HabitCompletionModel.find({ userId }).lean();
       completions = mongoCompletions as any[];
     } catch {
-      completions = dbService.getHabitCompletions().filter((c) => c.userId === userId || !c.userId);
+      completions = dbService.getHabitCompletions().filter((c) => c.userId === userId);
     }
 
     return res.json({

@@ -114,9 +114,9 @@ export default function App() {
     return storageService.getWeeklyProductivityReview(selectedDate, 'trailing7');
   }, [selectedDate, refreshTrigger]);
 
-  // Authentication state for single-user personal access
+  // Authentication state for multi-user personal access
   const [authState, setAuthState] = useState<'checking' | 'unauthenticated' | 'authenticated'>('checking');
-  const [authUser, setAuthUser] = useState<{ email: string; userId: string } | null>(null);
+  const [authUser, setAuthUser] = useState<{ email: string; userId: string; name?: string; role?: string } | null>(null);
 
   // Check personal session on startup
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function App() {
     };
   }, []);
 
-  const handleLoginSuccess = useCallback(async (user: { email: string; userId: string }) => {
+  const handleLoginSuccess = useCallback(async (user: { email: string; userId: string; name?: string; role?: string }) => {
     setAuthUser(user);
     setAuthState('authenticated');
     await storageService.loadFromServer();
@@ -478,11 +478,12 @@ export default function App() {
         revisionsDueCount={revisionsDueTodayCount}
         onResetData={handleResetData}
         onLogout={handleLogout}
+        authUser={authUser}
         userEmail={authUser?.email}
       />
 
       {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl 2xl:max-w-[1536px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Statistics & Streaks Overview Banner */}
         <StatsBanner
           stats={stats}

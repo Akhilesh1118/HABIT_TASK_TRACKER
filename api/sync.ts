@@ -14,9 +14,9 @@ export default async function handler(req: Request, res: Response) {
   if (req.method === 'GET') {
     return res.status(200).json({
       success: true,
-      tasks: dbService.getTasks().filter((t) => t.userId === user.userId || !t.userId),
-      habits: dbService.getHabits().filter((h) => h.userId === user.userId || !h.userId),
-      habitCompletions: dbService.getHabitCompletions().filter((c) => c.userId === user.userId || !c.userId),
+      tasks: dbService.getTasks().filter((t) => t.userId === user.userId),
+      habits: dbService.getHabits().filter((h) => h.userId === user.userId),
+      habitCompletions: dbService.getHabitCompletions().filter((c) => c.userId === user.userId),
       dailyPriorities: dbService.getDailyPriorities(),
       source: 'serverless',
     });

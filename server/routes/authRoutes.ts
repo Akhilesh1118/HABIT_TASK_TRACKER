@@ -4,6 +4,39 @@ import { getAuthCookieOptions, requireAuth } from '../middleware/authMiddleware'
 
 export const authRouter = Router();
 
+// POST /api/auth/register - Register a new user
+authRouter.post('/register', async (req: Request, res: Response) => {
+  try {
+    const { email, password, name = 'User' } = req.body || {};
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown_ip';
+
+    const result = await authService.register(email, password, name, clientIp);
+
+    if (!result.success || !result.token) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Registration failed',
+        lockoutRemainingSeconds: result.lockoutRemainingSeconds,
+      });
+    }
+
+    // Set secure HTTP-only cookie
+    const cookieOptions = getAuthCookieOptions(true);
+    res.cookie('auth_token', result.token, cookieOptions);
+
+    return res.status(201).json({
+      success: true,
+      user: result.user,
+      token: result.token,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: 'An internal error occurred during registration. Please try again.',
+    });
+  }
+});
+
 // POST /api/auth/login
 authRouter.post('/login', async (req: Request, res: Response) => {
   try {
@@ -81,6 +114,8 @@ authRouter.get('/me', (req: Request, res: Response) => {
     user: {
       email: user.email,
       userId: user.userId,
+      name: user.name,
+      role: user.role,
     },
   });
 });
@@ -88,6 +123,7 @@ authRouter.get('/me', (req: Request, res: Response) => {
 // POST /api/auth/change-password
 authRouter.post('/change-password', requireAuth, async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user.userId;
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
@@ -96,7 +132,7 @@ authRouter.post('/change-password', requireAuth, async (req: Request, res: Respo
       });
     }
 
-    const result = await authService.changePassword(currentPassword, newPassword);
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
     if (!result.success) {
       return res.status(400).json(result);
     }
@@ -112,3 +148,4 @@ authRouter.post('/change-password', requireAuth, async (req: Request, res: Respo
     });
   }
 });
+

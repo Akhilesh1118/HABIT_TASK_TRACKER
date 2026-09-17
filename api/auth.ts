@@ -97,6 +97,30 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
+    if (action === 'register' && req.method === 'POST') {
+      const { email, password, name = 'User' } = body;
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown_ip';
+
+      const result = await authService.register(email, password, name, clientIp);
+
+      if (!result.success || !result.token) {
+        return res.status(400).json({
+          success: false,
+          error: result.error || 'Registration failed',
+          lockoutRemainingSeconds: result.lockoutRemainingSeconds,
+        });
+      }
+
+      const cookieOptions = getAuthCookieOptions(true);
+      setCookieOnResponse(res, 'auth_token', result.token, cookieOptions);
+
+      return res.status(201).json({
+        success: true,
+        user: result.user,
+        token: result.token,
+      });
+    }
+
     if (action === 'login' && req.method === 'POST') {
       const { email, password, rememberMe = true } = body;
       const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || 'unknown_ip';
@@ -154,6 +178,8 @@ export default async function handler(req: Request, res: Response) {
         user: {
           email: user.email,
           userId: user.userId,
+          name: user.name,
+          role: user.role,
         },
       });
     }

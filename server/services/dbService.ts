@@ -8,15 +8,26 @@ import {
   HabitCompletionModel,
 } from '../models/HabitData';
 
+export interface DbUserAuth {
+  id: string;
+  email: string;
+  name?: string;
+  passwordHash: string;
+  role: 'user' | 'admin';
+  createdAt: string;
+}
+
 interface DatabaseSchema {
   tasks: Task[];
   habits: Habit[];
   habitCompletions: HabitCompletion[];
   dailyPriorities?: Record<string, string[]>;
+  users?: DbUserAuth[];
   userAuth?: {
     id: string;
     email: string;
     passwordHash: string;
+    role?: 'user' | 'admin';
     createdAt: string;
   };
 }
@@ -507,7 +518,7 @@ export class DbService {
   /**
    * Get single user auth record for local/offline fallback
    */
-  public getSingleUserAuth(): { id: string; email: string; passwordHash: string; createdAt: string } | undefined {
+  public getSingleUserAuth(): { id: string; email: string; passwordHash: string; role?: 'user' | 'admin'; createdAt: string } | undefined {
     this.reloadIfDiskExists();
     return this.data.userAuth;
   }
@@ -515,9 +526,72 @@ export class DbService {
   /**
    * Store single user auth record for local/offline fallback
    */
-  public setSingleUserAuth(auth: { id: string; email: string; passwordHash: string; createdAt: string }): void {
+  public setSingleUserAuth(auth: { id: string; email: string; passwordHash: string; role?: 'user' | 'admin'; createdAt: string }): void {
     this.reloadIfDiskExists();
     this.data.userAuth = auth;
+    this.saveUserAuth({
+      id: auth.id,
+      email: auth.email,
+      name: 'Admin',
+      passwordHash: auth.passwordHash,
+      role: auth.role || 'admin',
+      createdAt: auth.createdAt,
+    });
+    this.persistData();
+  }
+
+  /**
+   * Multi-user: get all local users
+   */
+  public getAllUsers(): DbUserAuth[] {
+    this.reloadIfDiskExists();
+    const users = this.data.users || [];
+    if (this.data.userAuth && !users.some((u) => u.email === this.data.userAuth?.email)) {
+      users.push({
+        id: this.data.userAuth.id,
+        email: this.data.userAuth.email,
+        name: 'Admin',
+        passwordHash: this.data.userAuth.passwordHash,
+        role: this.data.userAuth.role || 'admin',
+        createdAt: this.data.userAuth.createdAt,
+      });
+    }
+    return users;
+  }
+
+  /**
+   * Multi-user: find local user by email
+   */
+  public findUserByEmail(email: string): DbUserAuth | undefined {
+    const normalized = email.toLowerCase().trim();
+    const users = this.getAllUsers();
+    return users.find((u) => u.email.toLowerCase().trim() === normalized);
+  }
+
+  /**
+   * Multi-user: find local user by ID
+   */
+  public findUserById(id: string): DbUserAuth | undefined {
+    const users = this.getAllUsers();
+    return users.find((u) => u.id === id);
+  }
+
+  /**
+   * Multi-user: save or update local user
+   */
+  public saveUserAuth(user: DbUserAuth): void {
+    this.reloadIfDiskExists();
+    if (!this.data.users) {
+      this.data.users = [];
+    }
+    const idx = this.data.users.findIndex(
+      (u) => u.id === user.id || u.email.toLowerCase().trim() === user.email.toLowerCase().trim()
+    );
+    if (idx >= 0) {
+      this.data.users[idx] = { ...this.data.users[idx], ...user };
+    } else {
+      this.data.users.push(user);
+    }
     this.persistData();
   }
 }

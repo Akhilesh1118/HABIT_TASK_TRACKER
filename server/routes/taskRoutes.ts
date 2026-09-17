@@ -14,8 +14,7 @@ taskRouter.get('/', requireAuth, async (req: Request, res: Response) => {
     let tasks: Task[] = [];
 
     try {
-      await TaskModel.updateMany({ userId: 'usr_1' }, { $set: { userId } });
-      const mongoTasks = await TaskModel.find({ $or: [{ userId }, { userId: 'usr_1' }] }).sort({ createdAt: -1 }).lean();
+      const mongoTasks = await TaskModel.find({ userId }).sort({ createdAt: -1 }).lean();
       tasks = (mongoTasks as any[]).map((t) => ({
         ...t,
         scheduledDate: t.scheduledDate || t.date || t.dueDate || (t.createdAt ? t.createdAt.split('T')[0] : ''),
@@ -24,7 +23,7 @@ taskRouter.get('/', requireAuth, async (req: Request, res: Response) => {
         completedAt: t.completedAt || (t.completed ? t.updatedAt || t.createdAt : null),
       }));
 
-      console.log('[DIAGNOSTIC - BACKEND] GET /api/tasks:', {
+      console.log('[BACKEND] GET /api/tasks:', {
         endpoint: 'GET /api/tasks',
         authenticatedUserId: userId,
         mongoDatabase: mongoose.connection?.name || 'unknown',
@@ -32,7 +31,7 @@ taskRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       });
     } catch {
       // Fallback to dbService
-      tasks = dbService.getTasks().filter((t) => t.userId === userId || !t.userId).map((t) => ({
+      tasks = dbService.getTasks().filter((t) => t.userId === userId).map((t) => ({
         ...t,
         scheduledDate: t.scheduledDate || t.date || t.dueDate || (t.createdAt ? t.createdAt.split('T')[0] : ''),
         status: t.status || (t.completed ? 'completed' : 'pending'),
@@ -111,7 +110,7 @@ taskRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
     try {
       await TaskModel.findOneAndUpdate(
-        { id: taskId },
+        { id: taskId, userId },
         { $set: newTask },
         { upsert: true, new: true }
       );
@@ -176,7 +175,7 @@ taskRouter.put('/:id', requireAuth, async (req: Request, res: Response) => {
 
     try {
       const doc = await TaskModel.findOneAndUpdate(
-        { id: taskId, $or: [{ userId }, { userId: 'usr_1' }] },
+        { id: taskId, userId },
         { $set: updateData },
         { new: true }
       ).lean();
@@ -190,7 +189,7 @@ taskRouter.put('/:id', requireAuth, async (req: Request, res: Response) => {
 
     // Also update dbService
     const currentTasks = dbService.getTasks();
-    const idx = currentTasks.findIndex((t) => t.id === taskId);
+    const idx = currentTasks.findIndex((t) => t.id === taskId && t.userId === userId);
     if (idx !== -1) {
       currentTasks[idx] = { ...currentTasks[idx], ...updateData };
       updatedTask = currentTasks[idx];
@@ -236,17 +235,24 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
     };
 
     const doc = await TaskModel.findOneAndUpdate(
-      { id: taskId, $or: [{ userId }, { userId: 'usr_1' }] },
+      { id: taskId, userId },
       { $set: updateData },
       { new: true }
     ).lean();
 
     // Also update dbService
     const currentTasks = dbService.getTasks();
-    const idx = currentTasks.findIndex((t) => t.id === taskId);
+    const idx = currentTasks.findIndex((t) => t.id === taskId && t.userId === userId);
     if (idx !== -1) {
       currentTasks[idx] = { ...currentTasks[idx], ...updateData };
       dbService.syncTasks(currentTasks);
+    }
+
+    if (!doc && idx === -1) {
+      return res.status(404).json({
+        success: false,
+        error: 'Task not found',
+      });
     }
 
     return res.json({
@@ -274,26 +280,31 @@ taskRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
+    let deleted = false;
     try {
       const result = await TaskModel.deleteOne({ id: taskId, userId });
-      if (result.deletedCount === 0) {
-        // Check if task exists in dbService
-        const currentTasks = dbService.getTasks();
-        const exists = currentTasks.some((t) => t.id === taskId);
-        if (!exists) {
-          return res.status(404).json({
-            success: false,
-            error: 'Task not found',
-          });
-        }
+      if (result.deletedCount && result.deletedCount > 0) {
+        deleted = true;
       }
     } catch (dbErr: any) {
       console.warn('[TaskRoutes] MongoDB delete warning:', dbErr?.message);
     }
 
     // Delete from dbService
-    const remainingTasks = dbService.getTasks().filter((t) => t.id !== taskId);
+    const currentTasks = dbService.getTasks();
+    const existsInDbService = currentTasks.some((t) => t.id === taskId && t.userId === userId);
+    if (existsInDbService) {
+      deleted = true;
+    }
+    const remainingTasks = currentTasks.filter((t) => !(t.id === taskId && t.userId === userId));
     dbService.syncTasks(remainingTasks);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Task not found',
+      });
+    }
 
     return res.json({
       success: true,

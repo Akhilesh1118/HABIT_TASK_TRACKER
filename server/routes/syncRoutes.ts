@@ -19,17 +19,10 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
 
     if (isMongoConnected()) {
       try {
-        // Link any orphan legacy 'usr_1' tasks/habits to active authenticated user
-        await Promise.all([
-          TaskModel.updateMany({ userId: 'usr_1' }, { $set: { userId } }),
-          HabitModel.updateMany({ userId: 'usr_1' }, { $set: { userId } }),
-          HabitCompletionModel.updateMany({ userId: 'usr_1' }, { $set: { userId } }),
-        ]);
-
         const [mTasks, mHabits, mCompletions] = await Promise.all([
-          TaskModel.find({ $or: [{ userId }, { userId: 'usr_1' }] }).sort({ createdAt: -1 }).lean(),
-          HabitModel.find({ $or: [{ userId }, { userId: 'usr_1' }] }).sort({ createdAt: 1 }).lean(),
-          HabitCompletionModel.find({ $or: [{ userId }, { userId: 'usr_1' }] }).lean(),
+          TaskModel.find({ userId }).sort({ createdAt: -1 }).lean(),
+          HabitModel.find({ userId }).sort({ createdAt: 1 }).lean(),
+          HabitCompletionModel.find({ userId }).lean(),
         ]);
         tasks = (mTasks as any[]).map((t) => ({
           ...t,
@@ -42,7 +35,7 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
         habitCompletions = mCompletions as any[];
 
         // Diagnostic logging
-        console.log('[DIAGNOSTIC - BACKEND] GET /api/sync:', {
+        console.log('[BACKEND] GET /api/sync:', {
           endpoint: 'GET /api/sync',
           authenticatedUserId: userId,
           mongoDatabase: mongoose.connection?.name || 'unknown',
@@ -54,14 +47,14 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
         });
       } catch (err: any) {
         console.warn('[SyncRoutes] Error reading from MongoDB, falling back to local:', err?.message);
-        tasks = dbService.getTasks().filter((t) => t.userId === userId || !t.userId);
-        habits = dbService.getHabits().filter((h) => h.userId === userId || !h.userId);
-        habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId || !c.userId);
+        tasks = dbService.getTasks().filter((t) => t.userId === userId);
+        habits = dbService.getHabits().filter((h) => h.userId === userId);
+        habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId);
       }
     } else {
-      tasks = dbService.getTasks().filter((t) => t.userId === userId || !t.userId);
-      habits = dbService.getHabits().filter((h) => h.userId === userId || !h.userId);
-      habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId || !c.userId);
+      tasks = dbService.getTasks().filter((t) => t.userId === userId);
+      habits = dbService.getHabits().filter((h) => h.userId === userId);
+      habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId);
     }
 
     dailyPriorities = dbService.getDailyPriorities();

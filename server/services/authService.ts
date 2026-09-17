@@ -1,21 +1,26 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { connectToDatabase, isMongoConnected } from './mongoService';
-import { UserModel } from '../models/User';
-import { dbService } from './dbService';
+import { UserModel, UserRole } from '../models/User';
+import { dbService, DbUserAuth } from './dbService';
 
 export interface AuthSessionUser {
   userId: string;
   email: string;
+  name?: string;
+  role: UserRole;
 }
 
-export interface LoginResult {
+export interface AuthResult {
   success: boolean;
   error?: string;
   user?: AuthSessionUser;
   token?: string;
   lockoutRemainingSeconds?: number;
 }
+
+export type LoginResult = AuthResult;
+export type RegisterResult = AuthResult;
 
 class AuthService {
   private failedAttempts = new Map<string, { count: number; lockUntil: number }>();
@@ -28,12 +33,11 @@ class AuthService {
     if (secret && secret.trim().length >= 16) {
       return secret.trim();
     }
-    // Fallback deterministic fallback if not yet provided in .env
-    return 'habit_tracker_secure_single_user_jwt_secret_2026_x89f2a';
+    return 'habit_tracker_secure_multi_user_jwt_secret_2026_x89f2a';
   }
 
   /**
-   * Rate limiting / brute-force protection
+   * Rate limiting / brute-force protection per IP / identifier
    */
   public checkRateLimit(identifier: string): { allowed: boolean; remainingSeconds: number } {
     const record = this.failedAttempts.get(identifier);
@@ -73,104 +77,216 @@ class AuthService {
   }
 
   /**
-   * Get single personal account credentials.
-   * Priority: MongoDB Atlas User collection -> Local database.json -> Initial env setup
-   */
-  public async getSingleUser(): Promise<{ id: string; email: string; passwordHash: string } | null> {
-    try {
-      await connectToDatabase();
-      if (isMongoConnected()) {
-        const mongoUser = await UserModel.findOne().sort({ createdAt: 1 }).lean();
-        if (mongoUser) {
-          return {
-            id: (mongoUser as any)._id.toString(),
-            email: (mongoUser as any).email,
-            passwordHash: (mongoUser as any).passwordHash,
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('[AuthService] MongoDB lookup error, checking local store:', (e as any)?.message);
-    }
-
-    // Fallback: Check local dbService (for local development or pre-MongoDB initialization)
-    const localUser = dbService.getSingleUserAuth();
-    if (localUser && localUser.passwordHash) {
-      return {
-        id: localUser.id || 'usr_personal',
-        email: localUser.email,
-        passwordHash: localUser.passwordHash,
-      };
-    }
-
-    return null;
-  }
-
-  /**
-   * Initializes the single personal user account if none exists.
-   * Reads INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD from environment,
-   * or allows first-time personal account provisioning.
+   * Initializes the bootstrap admin account if none exists.
+   * Reads INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD from environment.
    */
   public async ensurePersonalAccount(): Promise<{ email: string } | null> {
+    return this.ensureAdminAccount();
+  }
+
+  public async ensureAdminAccount(): Promise<{ email: string } | null> {
     const email = (process.env.INITIAL_ADMIN_EMAIL || 'aky9842@gmail.com').toLowerCase().trim();
     const rawPassword = process.env.INITIAL_ADMIN_PASSWORD || 'PersonalPassword2026!';
 
     try {
       await connectToDatabase();
       if (isMongoConnected()) {
-        const mongoUser = await UserModel.findOne({ email }).lean();
-        if (mongoUser) {
-          dbService.setSingleUserAuth({
-            id: (mongoUser as any)._id.toString(),
-            email: (mongoUser as any).email,
-            passwordHash: (mongoUser as any).passwordHash,
-            createdAt: ((mongoUser as any).createdAt || new Date()).toISOString(),
+        const existingAdmin = await UserModel.findOne({ email }).lean();
+        if (existingAdmin) {
+          // If role was not set, make sure it's admin
+          if ((existingAdmin as any).role !== 'admin') {
+            await UserModel.updateOne({ _id: (existingAdmin as any)._id }, { $set: { role: 'admin' } });
+          }
+          dbService.saveUserAuth({
+            id: (existingAdmin as any)._id.toString(),
+            email: (existingAdmin as any).email,
+            name: (existingAdmin as any).name || 'Admin',
+            passwordHash: (existingAdmin as any).passwordHash,
+            role: 'admin',
+            createdAt: ((existingAdmin as any).createdAt || new Date()).toISOString(),
           });
-          return { email: (mongoUser as any).email };
+          return { email: (existingAdmin as any).email };
         }
 
-        // If no user exists with this email, create it in MongoDB Atlas
+        // If no user exists with this email, bootstrap admin account in MongoDB Atlas
         const passwordHash = await bcrypt.hash(rawPassword, 12);
-        const newUser = await UserModel.create({
+        const newAdmin = await UserModel.create({
+          name: 'Admin',
           email,
           passwordHash,
+          role: 'admin',
           createdAt: new Date(),
         });
 
-        dbService.setSingleUserAuth({
-          id: newUser._id.toString(),
-          email: newUser.email,
-          passwordHash: newUser.passwordHash,
-          createdAt: newUser.createdAt.toISOString(),
+        dbService.saveUserAuth({
+          id: newAdmin._id.toString(),
+          email: newAdmin.email,
+          name: newAdmin.name || 'Admin',
+          passwordHash: newAdmin.passwordHash,
+          role: 'admin',
+          createdAt: newAdmin.createdAt.toISOString(),
         });
 
-        console.log(`[AuthService] Initialized personal account in MongoDB Atlas for: ${email}`);
-        return { email: newUser.email };
+        console.log(`[AuthService] Initialized admin account in MongoDB Atlas for: ${email}`);
+        return { email: newAdmin.email };
       }
     } catch (e) {
-      console.warn('[AuthService] Could not ensure user in MongoDB:', (e as any)?.message);
+      console.warn('[AuthService] Could not ensure admin in MongoDB:', (e as any)?.message);
     }
 
-    const existingLocal = dbService.getSingleUserAuth();
-    if (existingLocal && existingLocal.email === email) {
+    const existingLocal = dbService.findUserByEmail(email);
+    if (existingLocal) {
       return { email: existingLocal.email };
     }
 
     // Fallback: Persist in local dbService
     const fallbackHash = await bcrypt.hash(rawPassword, 12);
-    dbService.setSingleUserAuth({
-      id: 'usr_personal',
+    dbService.saveUserAuth({
+      id: 'usr_admin',
       email,
+      name: 'Admin',
       passwordHash: fallbackHash,
+      role: 'admin',
       createdAt: new Date().toISOString(),
     });
-    console.log(`[AuthService] Initialized personal account in local store for: ${email}`);
+    console.log(`[AuthService] Initialized admin account in local store for: ${email}`);
 
     return { email };
   }
 
   /**
-   * Authenticates personal login credentials
+   * Registers a new regular user account (role is ALWAYS 'user')
+   */
+  public async register(
+    emailInput: string,
+    passwordInput: string,
+    nameInput: string = 'User',
+    ip: string = 'unknown'
+  ): Promise<RegisterResult> {
+    const normalizedEmail = (emailInput || '').toLowerCase().trim();
+    const trimmedName = (nameInput || '').trim() || 'User';
+    const rateLimit = this.checkRateLimit(ip);
+
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: `Too many attempts. Please wait ${rateLimit.remainingSeconds} seconds before retrying.`,
+        lockoutRemainingSeconds: rateLimit.remainingSeconds,
+      };
+    }
+
+    if (!normalizedEmail || !passwordInput) {
+      return {
+        success: false,
+        error: 'Email and password are required.',
+      };
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return {
+        success: false,
+        error: 'Please enter a valid email address.',
+      };
+    }
+
+    if (passwordInput.length < 6) {
+      return {
+        success: false,
+        error: 'Password must be at least 6 characters long.',
+      };
+    }
+
+    // Ensure bootstrap admin is initialized so admin email is reserved
+    await this.ensureAdminAccount();
+
+    // Check if user already exists
+    try {
+      await connectToDatabase();
+      if (isMongoConnected()) {
+        const existing = await UserModel.findOne({ email: normalizedEmail }).lean();
+        if (existing) {
+          return {
+            success: false,
+            error: 'An account with this email address already exists. Please log in.',
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn('[AuthService] Error checking user existence in MongoDB:', err?.message);
+    }
+
+    const localExisting = dbService.findUserByEmail(normalizedEmail);
+    if (localExisting) {
+      return {
+        success: false,
+        error: 'An account with this email address already exists. Please log in.',
+      };
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(passwordInput, 12);
+    let createdUserId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const role: UserRole = 'user'; // Strictly enforce normal user role
+
+    try {
+      if (isMongoConnected()) {
+        const newUser = await UserModel.create({
+          name: trimmedName,
+          email: normalizedEmail,
+          passwordHash,
+          role,
+          createdAt: new Date(),
+        });
+        createdUserId = newUser._id.toString();
+      }
+    } catch (err: any) {
+      console.error('[AuthService] Error saving new user to MongoDB:', err);
+      return {
+        success: false,
+        error: 'Failed to create user account. Please try again.',
+      };
+    }
+
+    // Save to local fallback store as well
+    dbService.saveUserAuth({
+      id: createdUserId,
+      email: normalizedEmail,
+      name: trimmedName,
+      passwordHash,
+      role,
+      createdAt: new Date().toISOString(),
+    });
+
+    this.resetFailedAttempts(ip);
+
+    // Issue JWT
+    const token = jwt.sign(
+      {
+        userId: createdUserId,
+        email: normalizedEmail,
+        name: trimmedName,
+        role,
+      },
+      this.getJwtSecret(),
+      { expiresIn: '30d' }
+    );
+
+    return {
+      success: true,
+      user: {
+        userId: createdUserId,
+        email: normalizedEmail,
+        name: trimmedName,
+        role,
+      },
+      token,
+    };
+  }
+
+  /**
+   * Authenticates any user credentials (admin or regular user)
    */
   public async login(
     emailInput: string,
@@ -195,27 +311,48 @@ class AuthService {
       };
     }
 
-    // Ensure initial personal account exists if not already set up
-    await this.ensurePersonalAccount();
+    // Ensure bootstrap admin account exists
+    await this.ensureAdminAccount();
 
-    const user = await this.getSingleUser();
-    if (!user) {
-      return {
-        success: false,
-        error: 'No personal account has been initialized yet.',
-      };
+    let foundUser: { id: string; email: string; name?: string; passwordHash: string; role: UserRole } | null = null;
+
+    try {
+      await connectToDatabase();
+      if (isMongoConnected()) {
+        const mongoUser = await UserModel.findOne({ email: normalizedEmail }).lean();
+        if (mongoUser) {
+          foundUser = {
+            id: (mongoUser as any)._id.toString(),
+            email: (mongoUser as any).email,
+            name: (mongoUser as any).name || 'User',
+            passwordHash: (mongoUser as any).passwordHash,
+            role: ((mongoUser as any).role as UserRole) || 'user',
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[AuthService] MongoDB lookup error, checking local store:', (e as any)?.message);
     }
 
-    // Compare email
-    const isEmailMatch = user.email.toLowerCase() === normalizedEmail;
-    // Always run bcrypt comparison even on email mismatch to protect against timing attacks
-    const dummyHash = '$2a$12$e8Y5tGzR9dE1gY9p34wYyeuM72iI5Y5iQ5gPqU4Lw9X3H4z6e2/1e';
-    const hashToCompare = isEmailMatch ? user.passwordHash : dummyHash;
+    if (!foundUser) {
+      const localUser = dbService.findUserByEmail(normalizedEmail);
+      if (localUser && localUser.passwordHash) {
+        foundUser = {
+          id: localUser.id,
+          email: localUser.email,
+          name: localUser.name || 'User',
+          passwordHash: localUser.passwordHash,
+          role: localUser.role || 'user',
+        };
+      }
+    }
 
+    // Dummy hash comparison to prevent timing attacks if user does not exist
+    const dummyHash = '$2a$12$e8Y5tGzR9dE1gY9p34wYyeuM72iI5Y5iQ5gPqU4Lw9X3H4z6e2/1e';
+    const hashToCompare = foundUser ? foundUser.passwordHash : dummyHash;
     const isPasswordValid = await bcrypt.compare(passwordInput, hashToCompare);
 
-    if (!isEmailMatch || !isPasswordValid) {
-      // Artificial delay to prevent rapid brute-forcing
+    if (!foundUser || !isPasswordValid) {
       await new Promise((r) => setTimeout(r, 600));
       this.recordFailedAttempt(ip);
 
@@ -231,17 +368,19 @@ class AuthService {
     // Update last login timestamp in MongoDB if connected
     try {
       if (isMongoConnected()) {
-        await (UserModel as any).findByIdAndUpdate(user.id, { lastLoginAt: new Date() });
+        await (UserModel as any).findByIdAndUpdate(foundUser.id, { lastLoginAt: new Date() });
       }
     } catch {
       // Non-blocking
     }
 
-    // Create JWT
+    // Create JWT with userId, email, role, name
     const token = jwt.sign(
       {
-        userId: user.id,
-        email: user.email,
+        userId: foundUser.id,
+        email: foundUser.email,
+        name: foundUser.name,
+        role: foundUser.role,
       },
       this.getJwtSecret(),
       { expiresIn: '30d' }
@@ -250,8 +389,10 @@ class AuthService {
     return {
       success: true,
       user: {
-        userId: user.id,
-        email: user.email,
+        userId: foundUser.id,
+        email: foundUser.email,
+        name: foundUser.name,
+        role: foundUser.role,
       },
       token,
     };
@@ -263,10 +404,12 @@ class AuthService {
   public verifyToken(token: string): AuthSessionUser | null {
     try {
       const decoded = jwt.verify(token, this.getJwtSecret()) as any;
-      if (decoded && decoded.email) {
+      if (decoded && decoded.email && decoded.userId) {
         return {
-          userId: decoded.userId || 'usr_personal',
+          userId: decoded.userId,
           email: decoded.email,
+          name: decoded.name,
+          role: decoded.role || 'user',
         };
       }
       return null;
@@ -276,17 +419,46 @@ class AuthService {
   }
 
   /**
-   * Secure method for personal user to change their password
+   * Secure method for user to change their password
    */
   public async changePassword(
+    userId: string,
     currentPassword: string,
     newPassword: string
   ): Promise<{ success: boolean; error?: string }> {
-    if (!newPassword || newPassword.length < 8) {
-      return { success: false, error: 'New password must be at least 8 characters long.' };
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'New password must be at least 6 characters long.' };
     }
 
-    const user = await this.getSingleUser();
+    let user: { id: string; email: string; passwordHash: string } | null = null;
+
+    try {
+      await connectToDatabase();
+      if (isMongoConnected()) {
+        const mongoUser = await UserModel.findById(userId).lean();
+        if (mongoUser) {
+          user = {
+            id: (mongoUser as any)._id.toString(),
+            email: (mongoUser as any).email,
+            passwordHash: (mongoUser as any).passwordHash,
+          };
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    if (!user) {
+      const local = dbService.findUserById(userId);
+      if (local) {
+        user = {
+          id: local.id,
+          email: local.email,
+          passwordHash: local.passwordHash,
+        };
+      }
+    }
+
     if (!user) {
       return { success: false, error: 'User not found.' };
     }
@@ -299,7 +471,6 @@ class AuthService {
     const newHash = await bcrypt.hash(newPassword, 12);
 
     try {
-      await connectToDatabase();
       if (isMongoConnected()) {
         await (UserModel as any).findByIdAndUpdate(user.id, {
           passwordHash: newHash,
@@ -310,13 +481,13 @@ class AuthService {
       console.warn('[AuthService] Error updating MongoDB password:', err?.message);
     }
 
-    // Update local store as well
-    dbService.setSingleUserAuth({
-      id: user.id,
-      email: user.email,
-      passwordHash: newHash,
-      createdAt: new Date().toISOString(),
-    });
+    const localUser = dbService.findUserById(user.id);
+    if (localUser) {
+      dbService.saveUserAuth({
+        ...localUser,
+        passwordHash: newHash,
+      });
+    }
 
     return { success: true };
   }

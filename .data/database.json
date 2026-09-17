@@ -1,7 +1,137 @@
 {
-  "habits": [],
-  "tasks": [],
-  "habitCompletions": [],
+  "habits": [
+    {
+      "_id": "6aab867617fb5ef3726eddca",
+      "id": "habit_1789625974362_9nmkz",
+      "__v": 0,
+      "active": true,
+      "category": "Health",
+      "createdAt": "Thu Sep 17 2026 06:19:34 GMT+0000 (Coordinated Universal Time)",
+      "description": "",
+      "frequency": "daily",
+      "name": "Alice Meditation Habit",
+      "startDate": "2026-09-17",
+      "updatedAt": "2026-09-17T06:19:34.431Z",
+      "userId": "6aab86750c40c8afe7dead78"
+    },
+    {
+      "id": "habit_1789635158895_vfrrh",
+      "userId": "6aabaa53f19cfe9b304c240a",
+      "name": "User A Morning Run",
+      "description": "",
+      "category": "Health",
+      "frequency": "daily",
+      "startDate": "2026-09-17",
+      "active": true,
+      "createdAt": "2026-09-17T08:52:38.895Z"
+    },
+    {
+      "id": "habit_1789635187833_2kyr6",
+      "userId": "6aabaa70f19cfe9b304c240d",
+      "name": "User A Private Habit",
+      "description": "",
+      "category": "Focus",
+      "frequency": "daily",
+      "startDate": "2026-09-17",
+      "active": true,
+      "createdAt": "2026-09-17T08:53:07.833Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task_1789635187908_xhbdt",
+      "userId": "6aabaa71f19cfe9b304c240e",
+      "title": "User B Task",
+      "category": "General",
+      "date": "2026-09-17",
+      "scheduledDate": "2026-09-17",
+      "dueDate": "2026-09-17",
+      "description": "",
+      "completed": false,
+      "status": "pending",
+      "completedAt": null,
+      "recurringSchedule": "none",
+      "isTopPriority": false,
+      "isStudySession": false,
+      "enableSpacedRevision": false,
+      "createdAt": "2026-09-17T08:53:07.908Z",
+      "updatedAt": "2026-09-17T08:53:07.908Z"
+    },
+    {
+      "id": "task_1789635158973_n7s84",
+      "userId": "6aabaa54f19cfe9b304c240b",
+      "title": "User B Unique Task",
+      "category": "General",
+      "date": "2026-09-17",
+      "scheduledDate": "2026-09-17",
+      "dueDate": "2026-09-17",
+      "description": "",
+      "completed": false,
+      "status": "pending",
+      "completedAt": null,
+      "recurringSchedule": "none",
+      "isTopPriority": false,
+      "isStudySession": false,
+      "enableSpacedRevision": false,
+      "createdAt": "2026-09-17T08:52:38.973Z",
+      "updatedAt": "2026-09-17T08:52:38.973Z"
+    },
+    {
+      "_id": "6aab866017fb5ef3726eddbd",
+      "id": "task_1789625952058_9bmfw",
+      "userId": "6aab865f8a940b35ee4fd225",
+      "__v": 0,
+      "category": "Study",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Thu Sep 17 2026 06:19:12 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-17",
+      "description": "",
+      "dueDate": "2026-09-17",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": false,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-17",
+      "status": "pending",
+      "title": "Alpha Secret Task",
+      "updatedAt": "Thu Sep 17 2026 08:48:37 GMT+0000 (Coordinated Universal Time)"
+    },
+    {
+      "_id": "6aab867617fb5ef3726eddc9",
+      "userId": "6aab86750c40c8afe7dead78",
+      "id": "task_1789625974278_qqx3p",
+      "__v": 0,
+      "category": "Study",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Thu Sep 17 2026 06:19:34 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-17",
+      "description": "",
+      "dueDate": "2026-09-17",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": false,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-17",
+      "status": "pending",
+      "title": "Alice Task 1",
+      "updatedAt": "Thu Sep 17 2026 08:48:37 GMT+0000 (Coordinated Universal Time)"
+    }
+  ],
+  "habitCompletions": [
+    {
+      "_id": "6aab867617fb5ef3726eddcb",
+      "habitId": "habit_1789625974362_9nmkz",
+      "userId": "6aab86750c40c8afe7dead78",
+      "date": "2026-09-17",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-09-17T06:19:34.734Z",
+      "id": "hc_habit_1789625974362_9nmkz_2026-09-17",
+      "updatedAt": "2026-09-17T06:19:34.807Z"
+    }
+  ],
   "dailyPriorities": {},
   "notificationLogs": [],
   "userAuth": {
@@ -9,5 +139,159 @@
     "email": "aky9842@gmail.com",
     "passwordHash": "$2b$12$KR0eZa9JUCrqDDz0V5FBq.EVHSFEbpDlnqUQxYcHvr5ZcZOlxYqaa",
     "createdAt": "2026-09-16T11:51:09.220Z"
-  }
+  },
+  "users": [
+    {
+      "id": "6aaa82ad324e4764b161c6dd",
+      "email": "aky9842@gmail.com",
+      "name": "Admin",
+      "passwordHash": "$2b$12$KR0eZa9JUCrqDDz0V5FBq.EVHSFEbpDlnqUQxYcHvr5ZcZOlxYqaa",
+      "role": "admin",
+      "createdAt": "2026-09-16T11:51:09.220Z"
+    },
+    {
+      "id": "6aab865f8a940b35ee4fd225",
+      "email": "user_alpha_1789625950714@test.com",
+      "name": "User Alpha",
+      "passwordHash": "$2b$12$/7mho8F8gb7E5zFe5o0BpexSx6DR9uCNiEc99IE1hu2S.hKfe9T5q",
+      "role": "user",
+      "createdAt": "2026-09-17T06:19:11.396Z"
+    },
+    {
+      "id": "6aab865f8a940b35ee4fd226",
+      "email": "user_beta_1789625951407@test.com",
+      "name": "User Beta",
+      "passwordHash": "$2b$12$npExSMhZ/AVGozfr7e/fmuVJa5FIhhuoCK1fXOm2j5bEesyEWSq7K",
+      "role": "user",
+      "createdAt": "2026-09-17T06:19:12.051Z"
+    },
+    {
+      "id": "6aab86750c40c8afe7dead78",
+      "email": "alice_1789625973010@example.com",
+      "name": "Alice",
+      "passwordHash": "$2b$12$QShpMdj3ErjBQ8mj/T3uje/ouzMefMLH3kHZOpaXO1kmjwuyU3TcC",
+      "role": "user",
+      "createdAt": "2026-09-17T06:19:33.648Z"
+    },
+    {
+      "id": "6aab86760c40c8afe7dead79",
+      "email": "bob_1789625973652@example.com",
+      "name": "Bob",
+      "passwordHash": "$2b$12$eGy0R9mftLohfilTMiQXOe6bNNfRKGm9aVtSXAsY2q6VK6fEkYGX6",
+      "role": "user",
+      "createdAt": "2026-09-17T06:19:34.272Z"
+    },
+    {
+      "id": "6aab86f191be3ea1d5d5fcbd",
+      "email": "akhileshyadav11189125198@gmail.com",
+      "name": "Akhilesh Yadav",
+      "passwordHash": "$2b$12$3BaGoIsBciWVCtZaR2RgJey1ncCMLgBjnZ8vPAhBk7/UV0zG4H41G",
+      "role": "user",
+      "createdAt": "2026-09-17T06:21:37.373Z"
+    },
+    {
+      "id": "6aaba6d578b8fcf24631773e",
+      "email": "akashyadav@gmail.com",
+      "name": "Akash Yadav",
+      "passwordHash": "$2b$12$JGg45Edktq0FUjfZaBpBceS4oVhw1sn2iI48RLsloCGy95L9F4WaS",
+      "role": "user",
+      "createdAt": "2026-09-17T08:37:41.795Z"
+    },
+    {
+      "id": "6aaba96478b8fcf24631773f",
+      "email": "test_a_1789634915965@example.com",
+      "name": "User A",
+      "passwordHash": "$2b$12$7qIfYFOvan93dlYpgtvUX.nhS7SIwFphwr/cGUG6txqjZGv5HH6a6",
+      "role": "user",
+      "createdAt": "2026-09-17T08:48:36.634Z"
+    },
+    {
+      "id": "6aaba96578b8fcf246317740",
+      "email": "test_b_1789634916639@example.com",
+      "name": "User B",
+      "passwordHash": "$2b$12$DIAQz9RXgSKhXeUTIL2XjePKaAeAcZDQvOnMMYAfKIq0iFJY9aqxW",
+      "role": "user",
+      "createdAt": "2026-09-17T08:48:37.281Z"
+    },
+    {
+      "id": "6aabaa53f19cfe9b304c240a",
+      "email": "audit_a_1789635155110@example.com",
+      "name": "Audit User A",
+      "passwordHash": "$2b$12$0qn.LIpNJdk6VMFvmmCctux1RjatZ1TnAVKPJpjLcvXMxmptchEc2",
+      "role": "user",
+      "createdAt": "2026-09-17T08:52:36.000Z"
+    },
+    {
+      "id": "6aabaa54f19cfe9b304c240b",
+      "email": "audit_b_1789635155110@example.com",
+      "name": "Audit User B",
+      "passwordHash": "$2b$12$m5sy5Kk2rFEmM2H1LCkBtu2NyRMLQbRrzC05yBhqIVbPq58abAJUy",
+      "role": "user",
+      "createdAt": "2026-09-17T08:52:36.819Z"
+    },
+    {
+      "id": "6aabaa5df19cfe9b304c240c",
+      "email": "test_1789635164873@example.com",
+      "name": "Tester",
+      "passwordHash": "$2b$12$4cPCoI/XLdWI06qfaK.Id.ImkJpwPWJPzfpQYHivTstIeXChKBsAC",
+      "role": "user",
+      "createdAt": "2026-09-17T08:52:45.694Z"
+    },
+    {
+      "id": "6aabaa70f19cfe9b304c240d",
+      "email": "evidence_a_1789635184005@example.com",
+      "name": "Evidence User A",
+      "passwordHash": "$2b$12$RjeM/OdrE1/xrUeJJ5P9OuDqfHU83RuGVDYsH.e.1GpF5TXMoHk7S",
+      "role": "user",
+      "createdAt": "2026-09-17T08:53:04.860Z"
+    },
+    {
+      "id": "6aabaa71f19cfe9b304c240e",
+      "email": "evidence_b_1789635184005@example.com",
+      "name": "Evidence User B",
+      "passwordHash": "$2b$12$BhlLopIMsDlfNpk.afPe4.twbCvbkdstcrC/NYgX9VXeY8cDAt1v6",
+      "role": "user",
+      "createdAt": "2026-09-17T08:53:05.670Z"
+    },
+    {
+      "id": "6aabaa78f19cfe9b304c240f",
+      "email": "test_coach_1789635192106@example.com",
+      "name": "Tester",
+      "passwordHash": "$2b$12$GCOOmwPy3912B5o9uliDuehPhDNc/2VJkVoG/kv8wGE5fTYheT.EG",
+      "role": "user",
+      "createdAt": "2026-09-17T08:53:12.880Z"
+    },
+    {
+      "id": "6aabaa92f19cfe9b304c2410",
+      "email": "evidence_a_1789635217703@example.com",
+      "name": "Evidence User A",
+      "passwordHash": "$2b$12$uAJCXbKF25B161JjIiIpQOXiK6rz/Fga75mYOeSAnz9o1M/k.x0XS",
+      "role": "user",
+      "createdAt": "2026-09-17T08:53:38.619Z"
+    },
+    {
+      "id": "6aabaa93f19cfe9b304c2411",
+      "email": "evidence_b_1789635217703@example.com",
+      "name": "Evidence User B",
+      "passwordHash": "$2b$12$nl7vw8Lx.8ZKDnCpjYdQAuRXWXNQvUdgkDQWWnGYBsY0/fgY7uKwS",
+      "role": "user",
+      "createdAt": "2026-09-17T08:53:39.428Z"
+    },
+    {
+      "id": "6aabaabaf19cfe9b304c2412",
+      "email": "evidence_a_1789635258027@example.com",
+      "name": "Evidence User A",
+      "passwordHash": "$2b$12$DUG57kQ1dsFSOYVyP1HKKuuQZI8dBd0VcjlTxziKSkKEtS7xp6G8S",
+      "role": "user",
+      "createdAt": "2026-09-17T08:54:18.838Z"
+    },
+    {
+      "id": "6aabaabbf19cfe9b304c2413",
+      "email": "evidence_b_1789635258027@example.com",
+      "name": "Evidence User B",
+      "passwordHash": "$2b$12$tMmZBGQOkYAOaHLtkiyaXe9hEG8HxgGIu.cDep0v8vO5NaQzXN2VK",
+      "role": "user",
+      "createdAt": "2026-09-17T08:54:19.599Z"
+    }
+  ]
 }
