@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { getCurrentIST } from '../src/utils/timeUtils';
+import { getCurrentIST } from '../src/utils/timeUtils.ts';
 
 export default function handler(req: Request, res: Response) {
   const ist = getCurrentIST();

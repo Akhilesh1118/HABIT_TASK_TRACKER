@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import { authService } from '../server/services/authService';
-import { getAuthCookieOptions, getCookieFromRequest } from '../server/middleware/authMiddleware';
+import { authService } from '../server/services/authService.ts';
+import { getAuthCookieOptions, getCookieFromRequest } from '../server/middleware/authMiddleware.ts';
 
 /**
  * Serializes a cookie name/value pair with standard options into a Set-Cookie header string

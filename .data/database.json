@@ -11,71 +11,39 @@
       "frequency": "daily",
       "name": "Alice Meditation Habit",
       "startDate": "2026-09-17",
-      "updatedAt": "2026-09-17T06:19:34.431Z",
+      "updatedAt": "2026-09-17T08:54:22.339Z",
       "userId": "6aab86750c40c8afe7dead78"
     },
     {
+      "_id": "6aabaa5617fb5ef3726eebbf",
       "id": "habit_1789635158895_vfrrh",
-      "userId": "6aabaa53f19cfe9b304c240a",
-      "name": "User A Morning Run",
-      "description": "",
-      "category": "Health",
-      "frequency": "daily",
-      "startDate": "2026-09-17",
+      "__v": 0,
       "active": true,
-      "createdAt": "2026-09-17T08:52:38.895Z"
+      "category": "Health",
+      "createdAt": "Thu Sep 17 2026 08:52:38 GMT+0000 (Coordinated Universal Time)",
+      "description": "",
+      "frequency": "daily",
+      "name": "User A Morning Run",
+      "startDate": "2026-09-17",
+      "updatedAt": "2026-09-17T08:54:22.339Z",
+      "userId": "6aabaa53f19cfe9b304c240a"
     },
     {
+      "_id": "6aabaa7317fb5ef3726eebcc",
       "id": "habit_1789635187833_2kyr6",
-      "userId": "6aabaa70f19cfe9b304c240d",
-      "name": "User A Private Habit",
-      "description": "",
-      "category": "Focus",
-      "frequency": "daily",
-      "startDate": "2026-09-17",
+      "__v": 0,
       "active": true,
-      "createdAt": "2026-09-17T08:53:07.833Z"
+      "category": "Focus",
+      "createdAt": "Thu Sep 17 2026 08:53:07 GMT+0000 (Coordinated Universal Time)",
+      "description": "",
+      "frequency": "daily",
+      "name": "User A Private Habit",
+      "startDate": "2026-09-17",
+      "updatedAt": "2026-09-17T08:54:22.339Z",
+      "userId": "6aabaa70f19cfe9b304c240d"
     }
   ],
   "tasks": [
-    {
-      "id": "task_1789635187908_xhbdt",
-      "userId": "6aabaa71f19cfe9b304c240e",
-      "title": "User B Task",
-      "category": "General",
-      "date": "2026-09-17",
-      "scheduledDate": "2026-09-17",
-      "dueDate": "2026-09-17",
-      "description": "",
-      "completed": false,
-      "status": "pending",
-      "completedAt": null,
-      "recurringSchedule": "none",
-      "isTopPriority": false,
-      "isStudySession": false,
-      "enableSpacedRevision": false,
-      "createdAt": "2026-09-17T08:53:07.908Z",
-      "updatedAt": "2026-09-17T08:53:07.908Z"
-    },
-    {
-      "id": "task_1789635158973_n7s84",
-      "userId": "6aabaa54f19cfe9b304c240b",
-      "title": "User B Unique Task",
-      "category": "General",
-      "date": "2026-09-17",
-      "scheduledDate": "2026-09-17",
-      "dueDate": "2026-09-17",
-      "description": "",
-      "completed": false,
-      "status": "pending",
-      "completedAt": null,
-      "recurringSchedule": "none",
-      "isTopPriority": false,
-      "isStudySession": false,
-      "enableSpacedRevision": false,
-      "createdAt": "2026-09-17T08:52:38.973Z",
-      "updatedAt": "2026-09-17T08:52:38.973Z"
-    },
     {
       "_id": "6aab866017fb5ef3726eddbd",
       "id": "task_1789625952058_9bmfw",
@@ -95,7 +63,7 @@
       "scheduledDate": "2026-09-17",
       "status": "pending",
       "title": "Alpha Secret Task",
-      "updatedAt": "Thu Sep 17 2026 08:48:37 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Thu Sep 17 2026 08:54:22 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aab867617fb5ef3726eddc9",
@@ -116,7 +84,49 @@
       "scheduledDate": "2026-09-17",
       "status": "pending",
       "title": "Alice Task 1",
-      "updatedAt": "Thu Sep 17 2026 08:48:37 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Thu Sep 17 2026 08:54:22 GMT+0000 (Coordinated Universal Time)"
+    },
+    {
+      "_id": "6aabaa5617fb5ef3726eebc0",
+      "id": "task_1789635158973_n7s84",
+      "userId": "6aabaa54f19cfe9b304c240b",
+      "__v": 0,
+      "category": "General",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Thu Sep 17 2026 08:52:38 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-17",
+      "description": "",
+      "dueDate": "2026-09-17",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": false,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-17",
+      "status": "pending",
+      "title": "User B Unique Task",
+      "updatedAt": "Thu Sep 17 2026 08:54:22 GMT+0000 (Coordinated Universal Time)"
+    },
+    {
+      "_id": "6aabaa7317fb5ef3726eebcd",
+      "id": "task_1789635187908_xhbdt",
+      "userId": "6aabaa71f19cfe9b304c240e",
+      "__v": 0,
+      "category": "General",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Thu Sep 17 2026 08:53:07 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-17",
+      "description": "",
+      "dueDate": "2026-09-17",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": false,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-17",
+      "status": "pending",
+      "title": "User B Task",
+      "updatedAt": "Thu Sep 17 2026 08:54:22 GMT+0000 (Coordinated Universal Time)"
     }
   ],
   "habitCompletions": [
@@ -129,7 +139,7 @@
       "completed": true,
       "createdAt": "2026-09-17T06:19:34.734Z",
       "id": "hc_habit_1789625974362_9nmkz_2026-09-17",
-      "updatedAt": "2026-09-17T06:19:34.807Z"
+      "updatedAt": "2026-09-17T08:54:22.339Z"
     }
   ],
   "dailyPriorities": {},
@@ -292,6 +302,14 @@
       "passwordHash": "$2b$12$tMmZBGQOkYAOaHLtkiyaXe9hEG8HxgGIu.cDep0v8vO5NaQzXN2VK",
       "role": "user",
       "createdAt": "2026-09-17T08:54:19.599Z"
+    },
+    {
+      "id": "6aabb48fda5f69f07c6abf3b",
+      "email": "test_deploy@tracker.com",
+      "name": "Test User",
+      "passwordHash": "$2b$12$oxBUUt7NX1sqv4nO7sduweCnwv5DbiMipF7DCcngvonC.09rmlVg6",
+      "role": "user",
+      "createdAt": "2026-09-17T09:36:15.585Z"
     }
   ]
 }

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import { aiCoachService } from '../server/services/aiCoachService';
-import { verifyRequestAuth } from '../server/middleware/authMiddleware';
+import { aiCoachService } from '../server/services/aiCoachService.ts';
+import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
 
 // In-memory sliding window rate limiter for the AI Coach endpoint (max 12 requests per minute per IP)
 const rateLimitMap = new Map<string, number[]>();

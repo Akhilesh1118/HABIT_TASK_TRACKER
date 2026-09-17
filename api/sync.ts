@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import { dbService } from '../server/services/dbService';
-import { verifyRequestAuth } from '../server/middleware/authMiddleware';
+import { dbService } from '../server/services/dbService.ts';
+import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
 
 export default async function handler(req: Request, res: Response) {
   const user = verifyRequestAuth(req);
