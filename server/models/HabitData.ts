@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Habit, HabitCompletion, Task } from '../../src/types';
+import type { Habit, HabitCompletion, Task } from '../../src/types.ts';
 
 // 1. Habit Schema
 export interface IHabitDocument extends Habit, Document {

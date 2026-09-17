@@ -1,8 +1,8 @@
-import { Router, Request, Response } from 'express';
-import { authService } from '../services/authService';
-import { getAuthCookieOptions, requireAuth } from '../middleware/authMiddleware';
+import express, { type Request, type Response } from 'express';
+import { authService } from '../services/authService.ts';
+import { getAuthCookieOptions, requireAuth } from '../middleware/authMiddleware.ts';
 
-export const authRouter = Router();
+export const authRouter = express.Router();
 
 // POST /api/auth/register - Register a new user
 authRouter.post('/register', async (req: Request, res: Response) => {

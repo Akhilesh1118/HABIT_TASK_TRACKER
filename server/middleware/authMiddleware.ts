@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { authService, AuthSessionUser } from '../services/authService';
+import type { Request, Response, NextFunction } from 'express';
+import { authService, type AuthSessionUser } from '../services/authService.ts';
 
 // Extend Express Request to include user
 declare global {

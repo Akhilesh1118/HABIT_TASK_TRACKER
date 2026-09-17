@@ -3,16 +3,16 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import { createServer as createViteServer } from 'vite';
-import { dbService } from './server/services/dbService';
-import { aiCoachService } from './server/services/aiCoachService';
-import { connectToDatabase } from './server/services/mongoService';
-import { authService } from './server/services/authService';
-import { authRouter } from './server/routes/authRoutes';
-import { taskRouter } from './server/routes/taskRoutes';
-import { habitRouter } from './server/routes/habitRoutes';
-import { syncRouter } from './server/routes/syncRoutes';
-import { requireAuth } from './server/middleware/authMiddleware';
-import { getCurrentIST } from './src/utils/timeUtils';
+import { dbService } from './server/services/dbService.ts';
+import { aiCoachService } from './server/services/aiCoachService.ts';
+import { connectToDatabase } from './server/services/mongoService.ts';
+import { authService } from './server/services/authService.ts';
+import { authRouter } from './server/routes/authRoutes.ts';
+import { taskRouter } from './server/routes/taskRoutes.ts';
+import { habitRouter } from './server/routes/habitRoutes.ts';
+import { syncRouter } from './server/routes/syncRoutes.ts';
+import { requireAuth } from './server/middleware/authMiddleware.ts';
+import { getCurrentIST } from './src/utils/timeUtils.ts';
 
 async function startServer() {
   // Connect to MongoDB Atlas (if MONGODB_URI is provided), ensure personal account, and preserve data

@@ -1,11 +1,11 @@
-import { Router, Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
-import { requireAuth } from '../middleware/authMiddleware';
-import { TaskModel } from '../models/HabitData';
-import { dbService } from '../services/dbService';
-import { Task } from '../../src/types';
+import { requireAuth } from '../middleware/authMiddleware.ts';
+import { TaskModel } from '../models/HabitData.ts';
+import { dbService } from '../services/dbService.ts';
+import type { Task } from '../../src/types.ts';
 
-export const taskRouter = Router();
+export const taskRouter = express.Router();
 
 // GET /api/tasks - Retrieve all tasks for the authenticated user
 taskRouter.get('/', requireAuth, async (req: Request, res: Response) => {

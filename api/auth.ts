@@ -81,21 +81,65 @@ function clearCookieOnResponse(res: any, name: string, options: any = {}) {
   }
 }
 
-export default async function handler(req: Request, res: Response) {
-  try {
-    const action =
-      (req.query?.action as string) ||
-      req.url.split('?')[0].split('/').filter(Boolean).pop() ||
-      '';
-
-    let body = req.body || {};
-    if (typeof body === 'string') {
+async function parseRequestBody(req: Request): Promise<any> {
+  if (req.body) {
+    if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+      return req.body;
+    }
+    if (typeof req.body === 'string') {
       try {
-        body = JSON.parse(body);
+        return JSON.parse(req.body);
       } catch {
-        body = {};
+        return {};
       }
     }
+    if (Buffer.isBuffer(req.body)) {
+      try {
+        return JSON.parse(req.body.toString('utf8'));
+      } catch {
+        return {};
+      }
+    }
+  }
+
+  // Fallback for unparsed readable streams
+  return new Promise((resolve) => {
+    let data = '';
+    req.on?.('data', (chunk: any) => {
+      data += chunk;
+    });
+    req.on?.('end', () => {
+      if (!data) return resolve({});
+      try {
+        resolve(JSON.parse(data));
+      } catch {
+        resolve({});
+      }
+    });
+    req.on?.('error', () => resolve({}));
+    // If stream has already ended or not an EventEmitter
+    if (!req.on) {
+      resolve({});
+    }
+  });
+}
+
+export default async function handler(req: Request, res: Response) {
+  try {
+    const rawUrl = req.url || '';
+    const urlPath = rawUrl.split('?')[0];
+    const pathParts = urlPath.split('/').filter(Boolean);
+    const lastPart = pathParts.pop() || '';
+
+    let action = (req.query?.action as string) || (lastPart !== 'auth' ? lastPart : '');
+    if (!action) {
+      if (rawUrl.includes('login')) action = 'login';
+      else if (rawUrl.includes('register')) action = 'register';
+      else if (rawUrl.includes('logout')) action = 'logout';
+      else if (rawUrl.includes('me')) action = 'me';
+    }
+
+    const body = await parseRequestBody(req);
 
     if (action === 'register' && req.method === 'POST') {
       const { email, password, name = 'User' } = body;

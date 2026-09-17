@@ -1,12 +1,12 @@
-import { Router, Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
-import { requireAuth } from '../middleware/authMiddleware';
-import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData';
-import { dbService } from '../services/dbService';
-import { isMongoConnected } from '../services/mongoService';
-import { Task, Habit, HabitCompletion } from '../../src/types';
+import { requireAuth } from '../middleware/authMiddleware.ts';
+import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
+import { dbService } from '../services/dbService.ts';
+import { isMongoConnected } from '../services/mongoService.ts';
+import type { Task, Habit, HabitCompletion } from '../../src/types.ts';
 
-export const syncRouter = Router();
+export const syncRouter = express.Router();
 
 // GET /api/sync - Retrieve authoritative data directly from MongoDB
 syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {

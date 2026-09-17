@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
-import { AICoachAnalysisResult, AICoachInputData } from '../../src/types';
-import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData';
+import type { AICoachAnalysisResult, AICoachInputData } from '../../src/types.ts';
+import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
 
 let aiClient: GoogleGenAI | null = null;
 

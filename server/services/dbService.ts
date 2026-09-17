@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { Habit, HabitCompletion, Task } from '../../src/types';
-import { isMongoConnected } from './mongoService';
+import type { Habit, HabitCompletion, Task } from '../../src/types.ts';
+import { isMongoConnected } from './mongoService.ts';
 import {
   HabitModel,
   TaskModel,
   HabitCompletionModel,
-} from '../models/HabitData';
+} from '../models/HabitData.ts';
 
 export interface DbUserAuth {
   id: string;

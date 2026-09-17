@@ -1,10 +1,10 @@
-import { Router, Request, Response } from 'express';
-import { requireAuth } from '../middleware/authMiddleware';
-import { HabitModel, HabitCompletionModel } from '../models/HabitData';
-import { dbService } from '../services/dbService';
-import { Habit, HabitCompletion } from '../../src/types';
+import express, { type Request, type Response } from 'express';
+import { requireAuth } from '../middleware/authMiddleware.ts';
+import { HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
+import { dbService } from '../services/dbService.ts';
+import type { Habit, HabitCompletion } from '../../src/types.ts';
 
-export const habitRouter = Router();
+export const habitRouter = express.Router();
 
 // GET /api/habits - Retrieve all habits for the authenticated user
 habitRouter.get('/', requireAuth, async (req: Request, res: Response) => {

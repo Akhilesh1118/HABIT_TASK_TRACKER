@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { connectToDatabase, isMongoConnected } from './mongoService';
-import { UserModel, UserRole } from '../models/User';
-import { dbService, DbUserAuth } from './dbService';
+import { connectToDatabase, isMongoConnected } from './mongoService.ts';
+import { UserModel, type UserRole } from '../models/User.ts';
+import { dbService, type DbUserAuth } from './dbService.ts';
 
 export interface AuthSessionUser {
   userId: string;
