@@ -443,4 +443,15 @@ export interface AICoachAnalysisResult {
   fallbackReason?: string;
 }
 
+export interface StorageLoadResult {
+  success: boolean;
+  source?: string;
+  tasksCount: number;
+  habitsCount: number;
+  habitCompletionsCount: number;
+  durationMs: number;
+  error?: string;
+  timedOut?: boolean;
+}
+
 

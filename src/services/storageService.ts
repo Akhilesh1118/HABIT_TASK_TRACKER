@@ -25,6 +25,7 @@ import {
   WeeklyReviewInsight,
   AICoachInputData,
   AICoachAnalysisResult,
+  StorageLoadResult,
 } from '../types';
 import { authenticatedFetch } from '../utils/authClient';
 import { getCurrentIST } from '../utils/timeUtils';
@@ -2282,65 +2283,187 @@ class StorageService {
       .sort((a, b) => b.studyMinutes - a.studyMinutes);
   }
 
-  public async loadFromServer(): Promise<boolean> {
-    if (typeof window === 'undefined') return false;
-    try {
-      const res = await authenticatedFetch('/api/sync');
-      if (!res.ok) return false;
-      const data = await res.json();
-      if (data && data.success) {
-        if (Array.isArray(data.tasks)) {
-          localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(data.tasks));
-        }
-        if (Array.isArray(data.habits)) {
-          localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(data.habits));
-        }
-        if (Array.isArray(data.habitCompletions)) {
-          localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify(data.habitCompletions));
-        }
-        if (data.dailyPriorities && typeof data.dailyPriorities === 'object') {
-          localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(data.dailyPriorities));
-        }
+  // --- IN-FLIGHT LOAD DEDUPLICATION & STATE ---
+  private activeLoadPromise: Promise<boolean> | null = null;
+  private isServerLoading: boolean = false;
+  private loadListeners: Array<(result: StorageLoadResult) => void> = [];
 
-        // Clean out any legacy mock spaced revisions from localStorage
-        const rawRevs = localStorage.getItem(STORAGE_KEYS.SPACED_REVISIONS);
-        if (rawRevs) {
-          try {
-            const parsedRevs = JSON.parse(rawRevs);
-            if (Array.isArray(parsedRevs)) {
-              const cleanRevs = parsedRevs.filter(
-                (s: TopicRevisionSchedule) =>
-                  s &&
-                  !s.id.startsWith('rev_hist_') &&
-                  !s.id.startsWith('rev_quant_') &&
-                  !s.id.startsWith('rev_reas_') &&
-                  !s.id.startsWith('rev_eng_') &&
-                  !s.id.startsWith('rev_tech_') &&
-                  !s.id.startsWith('rev_polity') &&
-                  !s.id.startsWith('rev_geo_')
-              );
-              localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify(cleanRevs));
-            }
-          } catch {
-            localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify([]));
-          }
-        }
-        localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+  public isCurrentlyLoading(): boolean {
+    return this.isServerLoading;
+  }
 
-        console.log('[DIAGNOSTIC - FRONTEND] Authoritative sync loaded from MongoDB:', {
-          tasksFromMongoDB: data.tasks?.length ?? 0,
-          habitsFromMongoDB: data.habits?.length ?? 0,
-          habitCompletionsFromMongoDB: data.habitCompletions?.length ?? 0,
-          localStorageTasks: this.getTasks().length,
-          localStorageHabits: this.getHabits().length,
-        });
+  public addLoadListener(listener: (result: StorageLoadResult) => void): () => void {
+    this.loadListeners.push(listener);
+    return () => {
+      this.loadListeners = this.loadListeners.filter((l) => l !== listener);
+    };
+  }
 
-        return true;
+  private notifyLoadListeners(result: StorageLoadResult): void {
+    for (const listener of this.loadListeners) {
+      try {
+        listener(result);
+      } catch (err) {
+        console.error('[StorageService] Error in load listener:', err);
       }
-    } catch (err) {
-      console.warn('[StorageService] Error loading authoritative data from server:', err);
     }
-    return false;
+  }
+
+  /**
+   * Asynchronously loads authoritative user state from MongoDB Atlas/Server.
+   * - In-flight deduplication: Reuses active Promise to avoid concurrent duplicate requests.
+   * - Timeout resilience: Aborts hanging network requests after timeoutMs without blocking.
+   * - Non-blocking execution: Yields to JavaScript event loop before updating storage.
+   * - Structured diagnostic telemetry & error logging.
+   */
+  public async loadFromServer(options: { timeoutMs?: number; force?: boolean } = {}): Promise<boolean> {
+    const { timeoutMs = 8000, force = false } = options;
+
+    if (typeof window === 'undefined') return false;
+
+    // Deduplicate in-flight load calls unless explicitly forced
+    if (this.activeLoadPromise && !force) {
+      console.info('[StorageService] Active load already in-flight; reusing pending promise.');
+      return this.activeLoadPromise;
+    }
+
+    this.isServerLoading = true;
+    const startTime = performance.now();
+
+    this.activeLoadPromise = (async (): Promise<boolean> => {
+      const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = abortController ? setTimeout(() => abortController.abort(), timeoutMs) : null;
+
+      try {
+        const fetchOptions: RequestInit = abortController ? { signal: abortController.signal } : {};
+        const res = await authenticatedFetch('/api/sync', fetchOptions);
+
+        if (timeoutId) clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const durationMs = Math.round(performance.now() - startTime);
+          console.warn(`[StorageService] Server sync returned HTTP ${res.status} in ${durationMs}ms`);
+          const result: StorageLoadResult = {
+            success: false,
+            tasksCount: this.getTasks().length,
+            habitsCount: this.getHabits().length,
+            habitCompletionsCount: this.getHabitCompletions().length,
+            durationMs,
+            error: `HTTP ${res.status}: ${res.statusText}`,
+          };
+          this.notifyLoadListeners(result);
+          return false;
+        }
+
+        const data = await res.json();
+        const durationMs = Math.round(performance.now() - startTime);
+
+        if (data && data.success) {
+          // Yield to main thread briefly before heavy localStorage writing to prevent UI micro-stutters
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+          if (Array.isArray(data.tasks)) {
+            localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(data.tasks));
+          }
+          if (Array.isArray(data.habits)) {
+            localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(data.habits));
+          }
+          if (Array.isArray(data.habitCompletions)) {
+            localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify(data.habitCompletions));
+          }
+          if (data.dailyPriorities && typeof data.dailyPriorities === 'object') {
+            localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(data.dailyPriorities));
+          }
+
+          // Clean out any legacy mock spaced revisions from localStorage
+          const rawRevs = localStorage.getItem(STORAGE_KEYS.SPACED_REVISIONS);
+          if (rawRevs) {
+            try {
+              const parsedRevs = JSON.parse(rawRevs);
+              if (Array.isArray(parsedRevs)) {
+                const cleanRevs = parsedRevs.filter(
+                  (s: TopicRevisionSchedule) =>
+                    s &&
+                    !s.id.startsWith('rev_hist_') &&
+                    !s.id.startsWith('rev_quant_') &&
+                    !s.id.startsWith('rev_reas_') &&
+                    !s.id.startsWith('rev_eng_') &&
+                    !s.id.startsWith('rev_tech_') &&
+                    !s.id.startsWith('rev_polity') &&
+                    !s.id.startsWith('rev_geo_')
+                );
+                localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify(cleanRevs));
+              }
+            } catch {
+              localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify([]));
+            }
+          }
+          localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+
+          const tasksCount = data.tasks?.length ?? 0;
+          const habitsCount = data.habits?.length ?? 0;
+          const habitCompletionsCount = data.habitCompletions?.length ?? 0;
+
+          console.info('[StorageService] Authoritative sync loaded successfully:', {
+            durationMs: `${durationMs}ms`,
+            source: data.source || 'mongodb_atlas',
+            tasks: tasksCount,
+            habits: habitsCount,
+            completions: habitCompletionsCount,
+          });
+
+          const result: StorageLoadResult = {
+            success: true,
+            source: data.source || 'mongodb_atlas',
+            tasksCount,
+            habitsCount,
+            habitCompletionsCount,
+            durationMs,
+          };
+          this.notifyLoadListeners(result);
+          return true;
+        } else {
+          console.warn('[StorageService] Server sync response payload missing success flag:', data);
+          const result: StorageLoadResult = {
+            success: false,
+            tasksCount: this.getTasks().length,
+            habitsCount: this.getHabits().length,
+            habitCompletionsCount: this.getHabitCompletions().length,
+            durationMs,
+            error: data?.error || 'Invalid sync response payload',
+          };
+          this.notifyLoadListeners(result);
+          return false;
+        }
+      } catch (err: any) {
+        if (timeoutId) clearTimeout(timeoutId);
+        const durationMs = Math.round(performance.now() - startTime);
+        const isAbort = err?.name === 'AbortError' || err?.message?.includes('aborted');
+
+        if (isAbort) {
+          console.warn(`[StorageService] Server sync timed out after ${timeoutMs}ms; using local cache.`);
+        } else {
+          console.warn(`[StorageService] Network/server error during sync (${durationMs}ms):`, err?.message || err);
+        }
+
+        const result: StorageLoadResult = {
+          success: false,
+          tasksCount: this.getTasks().length,
+          habitsCount: this.getHabits().length,
+          habitCompletionsCount: this.getHabitCompletions().length,
+          durationMs,
+          error: err?.message || 'Unknown network error',
+          timedOut: isAbort,
+        };
+        this.notifyLoadListeners(result);
+        return false;
+      } finally {
+        this.isServerLoading = false;
+        this.activeLoadPromise = null;
+      }
+    })();
+
+    return this.activeLoadPromise;
   }
 
   public clearUserData(): void {
@@ -2369,7 +2492,7 @@ class StorageService {
       this.syncDebounceTimer = null;
     }
 
-    const performSync = () => {
+    const performSync = async () => {
       try {
         const payload = {
           tasks: this.getTasks(),
@@ -2384,27 +2507,29 @@ class StorageService {
           return;
         }
 
-        authenticatedFetch('/api/sync', {
+        const syncStartTime = performance.now();
+        const res = await authenticatedFetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: serialized,
           keepalive: true,
-        })
-          .then((res) => {
-            if (res.ok) {
-              this.lastSyncedPayloadHash = serialized;
-            }
-          })
-          .catch(() => {
-            // Quietly handle offline or standalone dev environments
-          });
-      } catch {
-        // Ignore
+        });
+
+        const syncDuration = Math.round(performance.now() - syncStartTime);
+
+        if (res.ok) {
+          this.lastSyncedPayloadHash = serialized;
+          console.info(`[StorageService] Background sync persisted to server in ${syncDuration}ms.`);
+        } else {
+          console.warn(`[StorageService] Background sync failed with HTTP ${res.status} (${syncDuration}ms).`);
+        }
+      } catch (err: any) {
+        console.warn('[StorageService] Background sync network error (handled):', err?.message || err);
       }
     };
 
     if (immediate) {
-      performSync();
+      setTimeout(performSync, 0);
     } else {
       this.syncDebounceTimer = setTimeout(performSync, 800);
     }
