@@ -8,6 +8,30 @@
     {
       "source": "/api/auth/:action",
       "destination": "/api/auth?action=:action"
+    },
+    {
+      "source": "/api/focus/:id",
+      "destination": "/api/focus?id=:id"
+    },
+    {
+      "source": "/api/tasks/:id/complete",
+      "destination": "/api/tasks?id=:id&action=complete"
+    },
+    {
+      "source": "/api/tasks/:id",
+      "destination": "/api/tasks?id=:id"
+    },
+    {
+      "source": "/api/habits/completions",
+      "destination": "/api/habits?action=completions"
+    },
+    {
+      "source": "/api/habits/:id/toggle",
+      "destination": "/api/habits?id=:id&action=toggle"
+    },
+    {
+      "source": "/api/habits/:id",
+      "destination": "/api/habits?id=:id"
     }
   ]
 }

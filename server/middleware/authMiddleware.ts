@@ -28,11 +28,14 @@ export function getCookieFromRequest(req: Request, name: string): string | null 
  * Extracts and verifies auth token from request (cookies or Authorization header)
  */
 export function verifyRequestAuth(req: Request): AuthSessionUser | null {
-  const token =
-    getCookieFromRequest(req, 'auth_token') ||
-    (req.headers.authorization?.startsWith('Bearer ')
-      ? req.headers.authorization.slice(7).trim()
-      : null);
+  const cookieToken = getCookieFromRequest(req, 'auth_token');
+  const rawAuthHeader = req.headers?.authorization || (req.headers as any)?.Authorization || (req.headers as any)?.['authorization'];
+  const bearerToken =
+    typeof rawAuthHeader === 'string' && rawAuthHeader.startsWith('Bearer ')
+      ? rawAuthHeader.slice(7).trim()
+      : null;
+
+  const token = cookieToken || (req.cookies?.auth_token as string) || bearerToken;
 
   if (!token) return null;
   return authService.verifyToken(token);
