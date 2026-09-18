@@ -31,7 +31,7 @@ taskRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       });
     } catch {
       // Fallback to dbService
-      tasks = dbService.getTasks().filter((t) => t.userId === userId).map((t) => ({
+      tasks = dbService.getTasks(userId).map((t) => ({
         ...t,
         scheduledDate: t.scheduledDate || t.date || t.dueDate || (t.createdAt ? t.createdAt.split('T')[0] : ''),
         status: t.status || (t.completed ? 'completed' : 'pending'),
@@ -119,9 +119,9 @@ taskRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Keep dbService in sync
-    const currentTasks = dbService.getTasks().filter((t) => t.id !== taskId);
+    const currentTasks = dbService.getTasks(userId).filter((t) => t.id !== taskId);
     currentTasks.unshift(newTask);
-    dbService.syncTasks(currentTasks);
+    dbService.syncTasks(currentTasks, userId);
 
     return res.status(201).json({
       success: true,
@@ -188,12 +188,12 @@ taskRouter.put('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Also update dbService
-    const currentTasks = dbService.getTasks();
-    const idx = currentTasks.findIndex((t) => t.id === taskId && t.userId === userId);
+    const currentTasks = dbService.getTasks(userId);
+    const idx = currentTasks.findIndex((t) => t.id === taskId);
     if (idx !== -1) {
-      currentTasks[idx] = { ...currentTasks[idx], ...updateData };
+      currentTasks[idx] = { ...currentTasks[idx], ...updateData, userId };
       updatedTask = currentTasks[idx];
-      dbService.syncTasks(currentTasks);
+      dbService.syncTasks(currentTasks, userId);
     } else if (!updatedTask) {
       return res.status(404).json({
         success: false,
@@ -218,7 +218,7 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
   try {
     const userId = (req as any).user.userId;
     const taskId = req.params.id;
-    const { completed, completedAt } = req.body;
+    const { completed, completedAt } = req.body || {};
     const now = new Date().toISOString();
     const isCompleted = completed !== undefined ? Boolean(completed) : true;
 
@@ -227,11 +227,13 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
       status: 'completed' | 'pending';
       completedAt: string | null;
       updatedAt: string;
+      userId: string;
     } = {
       completed: isCompleted,
       status: isCompleted ? 'completed' : 'pending',
       completedAt: isCompleted ? (completedAt || now) : null,
       updatedAt: now,
+      userId,
     };
 
     const doc = await TaskModel.findOneAndUpdate(
@@ -241,11 +243,11 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
     ).lean();
 
     // Also update dbService
-    const currentTasks = dbService.getTasks();
-    const idx = currentTasks.findIndex((t) => t.id === taskId && t.userId === userId);
+    const currentTasks = dbService.getTasks(userId);
+    const idx = currentTasks.findIndex((t) => t.id === taskId);
     if (idx !== -1) {
-      currentTasks[idx] = { ...currentTasks[idx], ...updateData };
-      dbService.syncTasks(currentTasks);
+      currentTasks[idx] = { ...currentTasks[idx], ...updateData, userId };
+      dbService.syncTasks(currentTasks, userId);
     }
 
     if (!doc && idx === -1) {
@@ -282,7 +284,10 @@ taskRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
 
     let deleted = false;
     try {
-      const result = await TaskModel.deleteOne({ id: taskId, userId });
+      const result = await TaskModel.deleteOne({
+        id: taskId,
+        userId,
+      });
       if (result.deletedCount && result.deletedCount > 0) {
         deleted = true;
       }
@@ -291,13 +296,13 @@ taskRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Delete from dbService
-    const currentTasks = dbService.getTasks();
-    const existsInDbService = currentTasks.some((t) => t.id === taskId && t.userId === userId);
+    const currentTasks = dbService.getTasks(userId);
+    const existsInDbService = currentTasks.some((t) => t.id === taskId);
     if (existsInDbService) {
       deleted = true;
     }
-    const remainingTasks = currentTasks.filter((t) => !(t.id === taskId && t.userId === userId));
-    dbService.syncTasks(remainingTasks);
+    const remainingTasks = currentTasks.filter((t) => t.id !== taskId);
+    dbService.syncTasks(remainingTasks, userId);
 
     if (!deleted) {
       return res.status(404).json({

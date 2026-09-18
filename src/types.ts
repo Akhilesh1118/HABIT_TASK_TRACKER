@@ -227,6 +227,7 @@ export type FocusTimerStatus = 'idle' | 'running' | 'paused' | 'break' | 'comple
 
 export interface FocusSession {
   id: string;
+  userId?: string;
   taskId?: string;
   taskTitle: string;
   taskCategory?: TaskCategory;
@@ -247,6 +248,7 @@ export interface ActiveFocusTimerState {
   taskTitle: string;
   taskCategory?: TaskCategory;
   isHabit?: boolean;
+  autoMarkTaskComplete?: boolean;
   mode: FocusPresetMode;
   focusMinutes: number;
   breakMinutes: number;

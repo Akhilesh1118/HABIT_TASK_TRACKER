@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import type { Habit, HabitCompletion, Task } from '../../src/types.ts';
+import type { Habit, HabitCompletion, Task, FocusSession } from '../../src/types.ts';
 
 // 1. Habit Schema
 export interface IHabitDocument extends Habit, Document {
@@ -94,4 +94,35 @@ HabitCompletionSchema.index({ habitId: 1, date: 1 }, { unique: true });
 export const HabitCompletionModel: mongoose.Model<IHabitCompletionDocument> =
   (mongoose.models.HabitCompletion as mongoose.Model<IHabitCompletionDocument>) ||
   mongoose.model<IHabitCompletionDocument>('HabitCompletion', HabitCompletionSchema);
+
+// 4. Focus Session Schema
+export interface IFocusSessionDocument extends FocusSession, Document {
+  id: string;
+  userId: string;
+}
+
+const FocusSessionSchema: Schema = new Schema(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    taskId: { type: String, index: true },
+    taskTitle: { type: String, required: true },
+    taskCategory: { type: String },
+    isHabit: { type: Boolean, default: false },
+    mode: { type: String, default: '50/10' },
+    targetFocusMinutes: { type: Number, default: 25 },
+    actualSecondsSpent: { type: Number, required: true },
+    date: { type: String, required: true, index: true }, // YYYY-MM-DD in IST
+    startedAt: { type: String, required: true },
+    completedAt: { type: String, required: true },
+    wasCompletedNaturally: { type: Boolean, default: false },
+    notes: { type: String },
+  },
+  { timestamps: true, strict: false }
+);
+
+export const FocusSessionModel: mongoose.Model<IFocusSessionDocument> =
+  (mongoose.models.FocusSession as mongoose.Model<IFocusSessionDocument>) ||
+  mongoose.model<IFocusSessionDocument>('FocusSession', FocusSessionSchema);
+
 

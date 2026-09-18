@@ -11,6 +11,7 @@ import { authRouter } from './server/routes/authRoutes.ts';
 import { taskRouter } from './server/routes/taskRoutes.ts';
 import { habitRouter } from './server/routes/habitRoutes.ts';
 import { syncRouter } from './server/routes/syncRoutes.ts';
+import { focusRouter } from './server/routes/focusRoutes.ts';
 import { requireAuth } from './server/middleware/authMiddleware.ts';
 import { getCurrentIST } from './src/utils/timeUtils.ts';
 import diagnosticsHandler from './api/diagnostics.ts';
@@ -44,6 +45,7 @@ async function startServer() {
   app.use('/api/tasks', taskRouter);
   app.use('/api/habits', habitRouter);
   app.use('/api/sync', syncRouter);
+  app.use('/api/focus', focusRouter);
 
   // In-memory sliding window rate limiter for the AI Coach endpoint (max 12 requests per minute per IP)
   const aiCoachRateLimitMap = new Map<string, number[]>();

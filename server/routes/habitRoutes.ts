@@ -16,7 +16,7 @@ habitRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       const mongoHabits = await HabitModel.find({ userId }).sort({ createdAt: 1 }).lean();
       habits = mongoHabits as any[];
     } catch {
-      habits = dbService.getHabits().filter((h) => h.userId === userId);
+      habits = dbService.getHabits(userId);
     }
 
     return res.json({
@@ -70,7 +70,7 @@ habitRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
     try {
       await HabitModel.findOneAndUpdate(
-        { id: habitId },
+        { id: habitId, userId },
         { $set: newHabit },
         { upsert: true, new: true }
       );
@@ -78,9 +78,9 @@ habitRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       console.warn('[HabitRoutes] MongoDB save warning:', dbErr?.message);
     }
 
-    const currentHabits = dbService.getHabits().filter((h) => h.id !== habitId);
+    const currentHabits = dbService.getHabits(userId).filter((h) => h.id !== habitId);
     currentHabits.push(newHabit);
-    dbService.syncHabits(currentHabits);
+    dbService.syncHabits(currentHabits, userId);
 
     return res.status(201).json({
       success: true,
@@ -130,12 +130,12 @@ habitRouter.put('/:id', requireAuth, async (req: Request, res: Response) => {
       console.warn('[HabitRoutes] MongoDB update warning:', dbErr?.message);
     }
 
-    const currentHabits = dbService.getHabits();
+    const currentHabits = dbService.getHabits(userId);
     const idx = currentHabits.findIndex((h) => h.id === habitId);
     if (idx !== -1) {
-      currentHabits[idx] = { ...currentHabits[idx], ...updateData };
+      currentHabits[idx] = { ...currentHabits[idx], ...updateData, userId };
       updatedHabit = currentHabits[idx];
-      dbService.syncHabits(currentHabits);
+      dbService.syncHabits(currentHabits, userId);
     } else if (!updatedHabit) {
       return res.status(404).json({
         success: false,
@@ -170,27 +170,33 @@ habitRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
 
     let deleted = false;
     try {
-      const result = await HabitModel.deleteOne({ id: habitId, userId });
+      const result = await HabitModel.deleteOne({
+        id: habitId,
+        userId,
+      });
       if (result.deletedCount && result.deletedCount > 0) {
         deleted = true;
-        await HabitCompletionModel.deleteMany({ habitId, userId });
+        await HabitCompletionModel.deleteMany({
+          habitId,
+          userId,
+        });
       }
     } catch (dbErr: any) {
       console.warn('[HabitRoutes] MongoDB delete warning:', dbErr?.message);
     }
 
-    const currentHabits = dbService.getHabits();
-    const existsInDb = currentHabits.some((h) => h.id === habitId && h.userId === userId);
+    const currentHabits = dbService.getHabits(userId);
+    const existsInDb = currentHabits.some((h) => h.id === habitId);
     if (existsInDb) {
       deleted = true;
     }
-    const remainingHabits = currentHabits.filter((h) => !(h.id === habitId && h.userId === userId));
-    dbService.syncHabits(remainingHabits);
+    const remainingHabits = currentHabits.filter((h) => h.id !== habitId);
+    dbService.syncHabits(remainingHabits, userId);
 
-    const remainingCompletions = dbService.getHabitCompletions().filter(
-      (c) => !(c.habitId === habitId && c.userId === userId)
+    const remainingCompletions = dbService.getHabitCompletions(userId).filter(
+      (c) => c.habitId !== habitId
     );
-    dbService.syncHabitCompletions(remainingCompletions);
+    dbService.syncHabitCompletions(remainingCompletions, userId);
 
     if (!deleted) {
       return res.status(404).json({
@@ -221,7 +227,7 @@ habitRouter.get('/completions', requireAuth, async (req: Request, res: Response)
       const mongoCompletions = await HabitCompletionModel.find({ userId }).lean();
       completions = mongoCompletions as any[];
     } catch {
-      completions = dbService.getHabitCompletions().filter((c) => c.userId === userId);
+      completions = dbService.getHabitCompletions(userId);
     }
 
     return res.json({
@@ -268,7 +274,7 @@ habitRouter.post('/:id/toggle', requireAuth, async (req: Request, res: Response)
     }
 
     // Update dbService
-    const comps = dbService.getHabitCompletions().filter(
+    const comps = dbService.getHabitCompletions(userId).filter(
       (c) => !(c.habitId === habitId && c.date === date)
     );
     if (newStatus) {
@@ -280,7 +286,7 @@ habitRouter.post('/:id/toggle', requireAuth, async (req: Request, res: Response)
         completed: true,
       });
     }
-    dbService.syncHabitCompletions(comps);
+    dbService.syncHabitCompletions(comps, userId);
 
     return res.json({
       success: true,

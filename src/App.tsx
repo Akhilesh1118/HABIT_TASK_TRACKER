@@ -135,6 +135,12 @@ export default function App() {
         if (isMounted) {
           if (data.authenticated && data.user) {
             setAuthUser(data.user);
+            storageService.setCurrentUser({
+              id: data.user.userId,
+              email: data.user.email,
+              name: data.user.name || 'User',
+              role: data.user.role,
+            });
             setAuthState('authenticated');
             await storageService.loadFromServer();
             setUser(storageService.getUser());
@@ -174,6 +180,12 @@ export default function App() {
 
   const handleLoginSuccess = useCallback(async (user: { email: string; userId: string; name?: string; role?: string }) => {
     setAuthUser(user);
+    storageService.setCurrentUser({
+      id: user.userId,
+      email: user.email,
+      name: user.name || 'User',
+      role: user.role,
+    });
     setAuthState('authenticated');
     await storageService.loadFromServer();
     setUser(storageService.getUser());
@@ -210,7 +222,7 @@ export default function App() {
         const allTasks = storageService.getTasks();
         const task = allTasks.find((t) => t.id === taskId);
         if (task && !task.completed) {
-          storageService.toggleTaskCompletion(taskId);
+          storageService.setTaskCompletion(taskId, true);
         }
       }
       triggerRefresh();
@@ -219,7 +231,7 @@ export default function App() {
   );
 
   // Focus Timer Hook
-  const focusTimer = useFocusTimer(todayDate, handleFocusTaskComplete);
+  const focusTimer = useFocusTimer(todayDate, handleFocusTaskComplete, triggerRefresh);
 
   // Total Focus Minutes Today
   const focusMinutesToday = useMemo(() => {
@@ -332,9 +344,10 @@ export default function App() {
     accuracy?: number;
     enableSpacedRevision?: boolean;
   }) => {
+    const currentUserId = authUser?.userId || user.id || storageService.getUser().id;
     storageService.saveTask({
       id: taskData.id,
-      userId: user.id,
+      userId: currentUserId,
       title: taskData.title,
       category: taskData.category,
       date: taskData.date,
@@ -587,6 +600,7 @@ export default function App() {
         onStartBreak={focusTimer.startBreak}
         onSelectMode={focusTimer.setMode}
         onSelectTask={focusTimer.setTask}
+        onToggleAutoMarkTaskComplete={focusTimer.setAutoMarkTaskComplete}
         todayTasks={todayItems}
         todayDate={todayDate}
       />

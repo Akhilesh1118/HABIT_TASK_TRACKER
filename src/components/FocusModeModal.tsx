@@ -35,6 +35,7 @@ interface FocusModeModalProps {
   onStartBreak: () => void;
   onSelectMode: (mode: FocusPresetMode, customFocus?: number, customBreak?: number) => void;
   onSelectTask: (task: { id?: string; title: string; category?: TaskCategory; isHabit?: boolean }) => void;
+  onToggleAutoMarkTaskComplete?: (enabled: boolean) => void;
   todayTasks: DailySummaryItem[];
   todayDate: string;
 }
@@ -53,6 +54,7 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
   onStartBreak,
   onSelectMode,
   onSelectTask,
+  onToggleAutoMarkTaskComplete,
   todayTasks,
   todayDate,
 }) => {
@@ -63,7 +65,15 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
   const [customBreakInput, setCustomBreakInput] = useState('10');
   const [showHistory, setShowHistory] = useState(false);
   const [customTaskInput, setCustomTaskInput] = useState('');
-  const [markTaskCompleteCheckbox, setMarkTaskCompleteCheckbox] = useState(true);
+  const [markTaskCompleteCheckbox, setMarkTaskCompleteCheckbox] = useState(
+    timerState.autoMarkTaskComplete !== false
+  );
+
+  useEffect(() => {
+    if (timerState.autoMarkTaskComplete !== undefined) {
+      setMarkTaskCompleteCheckbox(timerState.autoMarkTaskComplete);
+    }
+  }, [timerState.autoMarkTaskComplete]);
 
   // Completed sessions for today
   const [todaySessions, setTodaySessions] = useState<FocusSession[]>([]);
@@ -434,7 +444,13 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
               <input
                 type="checkbox"
                 checked={markTaskCompleteCheckbox}
-                onChange={(e) => setMarkTaskCompleteCheckbox(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setMarkTaskCompleteCheckbox(checked);
+                  if (onToggleAutoMarkTaskComplete) {
+                    onToggleAutoMarkTaskComplete(checked);
+                  }
+                }}
                 className="w-3.5 h-3.5 rounded border-stone-700 bg-stone-900 text-emerald-500 focus:ring-emerald-500/20"
               />
               <span>Also mark &quot;{timerState.taskTitle}&quot; as completed when finished</span>

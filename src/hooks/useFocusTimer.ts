@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ActiveFocusTimerState, FocusPresetMode, FocusSession, FocusTimerStatus, TaskCategory } from '../types';
 import { storageService } from '../services/storageService';
 import { playFocusChime } from '../utils/focusSound';
+import { getCurrentIST } from '../utils/timeUtils';
 
 // Mode duration constants in minutes: [focusMinutes, breakMinutes]
 export const PRESET_MODES: Record<'25/5' | '50/10' | '90/15', { focus: number; break: number; label: string }> = {
@@ -15,6 +16,7 @@ export interface StartSessionOptions {
   taskTitle: string;
   taskCategory?: TaskCategory;
   isHabit?: boolean;
+  autoMarkTaskComplete?: boolean;
   mode?: FocusPresetMode;
   customFocusMinutes?: number;
   customBreakMinutes?: number;
@@ -31,7 +33,11 @@ function clearGlobalTimer(): void {
   }
 }
 
-export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (taskId: string, isHabit: boolean) => void) {
+export function useFocusTimer(
+  todayDate: string,
+  onTaskCompleteRequested?: (taskId: string, isHabit: boolean) => void,
+  onSessionSaved?: (session: FocusSession) => void
+) {
   const [timerState, setTimerState] = useState<ActiveFocusTimerState>(() => {
     // 1. Attempt to restore active session from localStorage
     const saved = storageService.getActiveTimerState();
@@ -71,6 +77,8 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
       sessionId: `foc_${Date.now()}`,
       taskTitle: '📚 CGL General Awareness',
       taskCategory: 'SSC CGL',
+      isHabit: false,
+      autoMarkTaskComplete: true,
       mode: defaultMode,
       focusMinutes: focusMins,
       breakMinutes: PRESET_MODES['50/10'].break,
@@ -114,6 +122,7 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
         }
 
         // Record completed focus session in permanent storage
+        const sessionDate = curr.startedAt ? getCurrentIST(new Date(curr.startedAt)).dateStr : todayDate;
         const completedRecord: FocusSession = {
           id: curr.sessionId,
           taskId: curr.taskId,
@@ -123,12 +132,20 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
           mode: curr.mode,
           targetFocusMinutes: curr.focusMinutes,
           actualSecondsSpent: curr.totalSeconds,
-          date: todayDate,
+          date: sessionDate,
           startedAt: curr.startedAt,
           completedAt: new Date().toISOString(),
           wasCompletedNaturally: true,
         };
         storageService.saveFocusSession(completedRecord);
+        if (onSessionSaved) {
+          onSessionSaved(completedRecord);
+        }
+
+        // Auto-complete linked task if option is enabled (default true) and taskId exists
+        if (curr.autoMarkTaskComplete !== false && curr.taskId && onTaskCompleteRequested) {
+          onTaskCompleteRequested(curr.taskId, Boolean(curr.isHabit));
+        }
 
         setTimerState((prev) => ({
           ...prev,
@@ -160,7 +177,7 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
         lastTickAt: now,
       }));
     }
-  }, [soundEnabled, todayDate]);
+  }, [soundEnabled, todayDate, onSessionSaved, onTaskCompleteRequested]);
 
   // Setup interval when running, guarantee only 1 interval exists
   useEffect(() => {
@@ -208,6 +225,7 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
         taskTitle: options?.taskTitle || prev.taskTitle || '📚 CGL General Awareness',
         taskCategory: options?.taskCategory || prev.taskCategory || 'SSC CGL',
         isHabit: options?.isHabit !== undefined ? options.isHabit : prev.isHabit,
+        autoMarkTaskComplete: options?.autoMarkTaskComplete !== undefined ? options.autoMarkTaskComplete : (prev.autoMarkTaskComplete !== undefined ? prev.autoMarkTaskComplete : true),
         mode,
         focusMinutes: focusMins,
         breakMinutes: breakMins,
@@ -255,12 +273,37 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
 
   // Actions: Stop
   const stop = useCallback((confirmPrompt: boolean = false) => {
+    const curr = stateRef.current;
     if (confirmPrompt && timerState.status === 'running') {
-      const ok = window.confirm('Are you sure you want to stop this focus session? Elapsed progress will be reset.');
+      const ok = window.confirm('Are you sure you want to stop this focus session?');
       if (!ok) return;
     }
 
     clearGlobalTimer();
+
+    // If session had meaningful elapsed time spent (>= 10 seconds) and was not a break phase, save the focus session!
+    if (!curr.isBreakPhase && curr.elapsedSeconds >= 10) {
+      const sessionDate = curr.startedAt ? getCurrentIST(new Date(curr.startedAt)).dateStr : todayDate;
+      const stoppedRecord: FocusSession = {
+        id: curr.sessionId,
+        taskId: curr.taskId,
+        taskTitle: curr.taskTitle,
+        taskCategory: curr.taskCategory,
+        isHabit: curr.isHabit,
+        mode: curr.mode,
+        targetFocusMinutes: curr.focusMinutes,
+        actualSecondsSpent: curr.elapsedSeconds,
+        date: sessionDate,
+        startedAt: curr.startedAt,
+        completedAt: new Date().toISOString(),
+        wasCompletedNaturally: false,
+      };
+      storageService.saveFocusSession(stoppedRecord);
+      if (onSessionSaved) {
+        onSessionSaved(stoppedRecord);
+      }
+    }
+
     setTimerState((prev) => {
       const defaultSecs = prev.focusMinutes * 60;
       return {
@@ -275,7 +318,7 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
       };
     });
     storageService.clearActiveTimerState();
-  }, [timerState.status]);
+  }, [timerState.status, todayDate, onSessionSaved]);
 
   // Actions: Complete session early or finalize
   const complete = useCallback((markTaskDone: boolean = true) => {
@@ -287,6 +330,7 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
 
     // Save completed session if not in break phase
     if (!curr.isBreakPhase && actualSecs > 0) {
+      const sessionDate = curr.startedAt ? getCurrentIST(new Date(curr.startedAt)).dateStr : todayDate;
       const completedRecord: FocusSession = {
         id: curr.sessionId,
         taskId: curr.taskId,
@@ -296,12 +340,15 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
         mode: curr.mode,
         targetFocusMinutes: curr.focusMinutes,
         actualSecondsSpent: actualSecs,
-        date: todayDate,
+        date: sessionDate,
         startedAt: curr.startedAt,
         completedAt: new Date().toISOString(),
         wasCompletedNaturally: curr.remainingSeconds === 0,
       };
       storageService.saveFocusSession(completedRecord);
+      if (onSessionSaved) {
+        onSessionSaved(completedRecord);
+      }
     }
 
     if (soundEnabled) {
@@ -320,7 +367,7 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
       targetEndTime: null,
       lastTickAt: now,
     }));
-  }, [soundEnabled, todayDate, onTaskCompleteRequested]);
+  }, [soundEnabled, todayDate, onTaskCompleteRequested, onSessionSaved]);
 
   // Start break phase
   const startBreak = useCallback(() => {
@@ -393,6 +440,15 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
       taskTitle: task.title,
       taskCategory: task.category || prev.taskCategory,
       isHabit: task.isHabit,
+      autoMarkTaskComplete: true,
+    }));
+  }, []);
+
+  // Update auto-mark complete preference
+  const setAutoMarkTaskComplete = useCallback((enabled: boolean) => {
+    setTimerState((prev) => ({
+      ...prev,
+      autoMarkTaskComplete: enabled,
     }));
   }, []);
 
@@ -408,5 +464,6 @@ export function useFocusTimer(todayDate: string, onTaskCompleteRequested?: (task
     startBreak,
     setMode,
     setTask,
+    setAutoMarkTaskComplete,
   };
 }

@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import type { Habit, HabitCompletion, Task } from '../../src/types.ts';
+import type { Habit, HabitCompletion, Task, FocusSession } from '../../src/types.ts';
 import { isMongoConnected } from './mongoService.ts';
 import {
   HabitModel,
   TaskModel,
   HabitCompletionModel,
+  FocusSessionModel,
 } from '../models/HabitData.ts';
 
 export interface DbUserAuth {
@@ -21,6 +22,7 @@ interface DatabaseSchema {
   tasks: Task[];
   habits: Habit[];
   habitCompletions: HabitCompletion[];
+  focusSessions?: (FocusSession & { userId?: string })[];
   dailyPriorities?: Record<string, string[]>;
   users?: DbUserAuth[];
   userAuth?: {
@@ -47,6 +49,7 @@ function getDefaultData(): DatabaseSchema {
     habits: [],
     tasks: [],
     habitCompletions: [],
+    focusSessions: [],
     dailyPriorities: {},
   };
 }
@@ -217,57 +220,87 @@ export class DbService {
   // --- UNIFIED BATCH SYNC WITH DIRTY CHECKING ---
   /**
    * Synchronizes tasks, habits, completions, and priorities in a single atomic batch.
-   * Performs rigorous dirty checks: if nothing changed, no disk writes or MongoDB bulkWrites occur.
+   * Performs rigorous user-isolation and dirty checks: if nothing changed, no disk writes or MongoDB bulkWrites occur.
    */
-  public syncData(payload: {
-    tasks?: Task[];
-    habits?: Habit[];
-    habitCompletions?: HabitCompletion[];
-    dailyPriorities?: Record<string, string[]>;
-  }): { tasksCount: number; habitsCount: number; completionsCount: number; changed: boolean } {
+  public syncData(
+    payload: {
+      tasks?: Task[];
+      habits?: Habit[];
+      habitCompletions?: HabitCompletion[];
+      dailyPriorities?: Record<string, string[]>;
+    },
+    userId?: string
+  ): { tasksCount: number; habitsCount: number; completionsCount: number; changed: boolean } {
     this.reloadIfDiskExists();
     let isDirty = false;
 
-    // 1. Sync tasks
+    // 1. Sync tasks (non-destructive merge)
     if (Array.isArray(payload.tasks)) {
+      const scopedIncoming = userId
+        ? payload.tasks.map((t) => ({ ...t, userId: t.userId || userId }))
+        : payload.tasks;
+      const otherUserTasks = userId ? this.data.tasks.filter((t) => t.userId && t.userId !== userId) : [];
+      const existingUserTasks = userId ? this.data.tasks.filter((t) => t.userId === userId) : this.data.tasks;
+
       const taskMap = new Map<string, Task>();
-      for (const t of payload.tasks) {
+      for (const t of existingUserTasks) {
+        if (t && t.id) taskMap.set(t.id, t);
+      }
+      for (const t of scopedIncoming) {
         if (!t || !t.id) continue;
         const existing = taskMap.get(t.id);
         if (!existing || (t.updatedAt && t.updatedAt >= (existing.updatedAt || ''))) {
           taskMap.set(t.id, t);
         }
       }
-      const newTasks = Array.from(taskMap.values());
+      const newTasks = [...otherUserTasks, ...Array.from(taskMap.values())];
       if (JSON.stringify(newTasks) !== JSON.stringify(this.data.tasks)) {
         this.data.tasks = newTasks;
         isDirty = true;
       }
     }
 
-    // 2. Sync habits
+    // 2. Sync habits (non-destructive merge)
     if (Array.isArray(payload.habits)) {
+      const scopedIncoming = userId
+        ? payload.habits.map((h) => ({ ...h, userId: h.userId || userId }))
+        : payload.habits;
+      const otherUserHabits = userId ? this.data.habits.filter((h) => h.userId && h.userId !== userId) : [];
+      const existingUserHabits = userId ? this.data.habits.filter((h) => h.userId === userId) : this.data.habits;
+
       const habitMap = new Map<string, Habit>();
-      for (const h of payload.habits) {
+      for (const h of existingUserHabits) {
+        if (h && h.id) habitMap.set(h.id, h);
+      }
+      for (const h of scopedIncoming) {
         if (!h || !h.id) continue;
         habitMap.set(h.id, h);
       }
-      const newHabits = Array.from(habitMap.values());
+      const newHabits = [...otherUserHabits, ...Array.from(habitMap.values())];
       if (JSON.stringify(newHabits) !== JSON.stringify(this.data.habits)) {
         this.data.habits = newHabits;
         isDirty = true;
       }
     }
 
-    // 3. Sync habit completions
+    // 3. Sync habit completions (non-destructive merge)
     if (Array.isArray(payload.habitCompletions)) {
+      const scopedIncoming = userId
+        ? payload.habitCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+        : payload.habitCompletions;
+      const otherUserComps = userId ? this.data.habitCompletions.filter((c) => c.userId && c.userId !== userId) : [];
+      const existingUserComps = userId ? this.data.habitCompletions.filter((c) => c.userId === userId) : this.data.habitCompletions;
+
       const compMap = new Map<string, HabitCompletion>();
-      for (const c of payload.habitCompletions) {
+      for (const c of existingUserComps) {
+        if (c && c.habitId && c.date) compMap.set(`${c.habitId}_${c.date}`, c);
+      }
+      for (const c of scopedIncoming) {
         if (!c || !c.habitId || !c.date) continue;
         const key = `${c.habitId}_${c.date}`;
         compMap.set(key, c);
       }
-      const newComps = Array.from(compMap.values());
+      const newComps = [...otherUserComps, ...Array.from(compMap.values())];
       if (JSON.stringify(newComps) !== JSON.stringify(this.data.habitCompletions)) {
         this.data.habitCompletions = newComps;
         isDirty = true;
@@ -286,33 +319,36 @@ export class DbService {
     if (isDirty) {
       this.persistData();
 
-      // Mirror to MongoDB Atlas asynchronously if connected
-      if (isMongoConnected()) {
+      // Mirror to MongoDB Atlas asynchronously if connected with strict user scoping
+      if (isMongoConnected() && userId) {
         try {
-          if (this.data.tasks.length > 0) {
-            const taskOps = this.data.tasks.map((task) => ({
+          const userTasks = this.data.tasks.filter((t) => t.userId === userId);
+          if (userTasks.length > 0) {
+            const taskOps = userTasks.map((task) => ({
               updateOne: {
-                filter: { id: task.id },
+                filter: { id: task.id, userId },
                 update: { $set: task },
                 upsert: true,
               },
             }));
             (TaskModel as any).bulkWrite(taskOps).catch(() => {});
           }
-          if (this.data.habits.length > 0) {
-            const habitOps = this.data.habits.map((habit) => ({
+          const userHabits = this.data.habits.filter((h) => h.userId === userId);
+          if (userHabits.length > 0) {
+            const habitOps = userHabits.map((habit) => ({
               updateOne: {
-                filter: { id: habit.id },
+                filter: { id: habit.id, userId },
                 update: { $set: habit },
                 upsert: true,
               },
             }));
             (HabitModel as any).bulkWrite(habitOps).catch(() => {});
           }
-          if (this.data.habitCompletions.length > 0) {
-            const compOps = this.data.habitCompletions.map((comp) => ({
+          const userComps = this.data.habitCompletions.filter((c) => c.userId === userId);
+          if (userComps.length > 0) {
+            const compOps = userComps.map((comp) => ({
               updateOne: {
-                filter: { habitId: comp.habitId, date: comp.date },
+                filter: { habitId: comp.habitId, date: comp.date, userId },
                 update: { $set: comp },
                 upsert: true,
               },
@@ -326,48 +362,56 @@ export class DbService {
     }
 
     return {
-      tasksCount: this.data.tasks.length,
-      habitsCount: this.data.habits.length,
-      completionsCount: this.data.habitCompletions.length,
+      tasksCount: this.data.tasks.filter((t) => !userId || t.userId === userId).length,
+      habitsCount: this.data.habits.filter((h) => !userId || h.userId === userId).length,
+      completionsCount: this.data.habitCompletions.filter((c) => !userId || c.userId === userId).length,
       changed: isDirty,
     };
   }
 
   // --- TASKS ---
-  public getTasks(): Task[] {
+  public getTasks(userId?: string): Task[] {
     this.reloadIfDiskExists();
+    if (userId) {
+      return this.data.tasks.filter((t) => t.userId === userId);
+    }
     return this.data.tasks;
   }
 
-  public syncTasks(clientTasks: Task[]): void {
+  public syncTasks(clientTasks: Task[], userId?: string): void {
     if (!Array.isArray(clientTasks)) return;
     this.reloadIfDiskExists();
+    const scopedIncoming = userId
+      ? clientTasks.map((t) => ({ ...t, userId: t.userId || userId }))
+      : clientTasks;
+    const otherUserTasks = userId ? this.data.tasks.filter((t) => t.userId && t.userId !== userId) : [];
+
     // Deduplicate by task ID, preserving latest updatedAt
     const taskMap = new Map<string, Task>();
-    for (const t of clientTasks) {
+    for (const t of scopedIncoming) {
       if (!t || !t.id) continue;
       const existing = taskMap.get(t.id);
       if (!existing || (t.updatedAt && t.updatedAt >= (existing.updatedAt || ''))) {
         taskMap.set(t.id, t);
       }
     }
-    const newTasks = Array.from(taskMap.values());
+    const newTasks = [...otherUserTasks, ...Array.from(taskMap.values())];
     if (JSON.stringify(newTasks) === JSON.stringify(this.data.tasks)) {
       return; // No changes, skip disk write completely
     }
     this.data.tasks = newTasks;
     this.persistData();
 
-    if (isMongoConnected()) {
-      const taskIds = this.data.tasks.map((t) => t.id);
-      TaskModel.deleteMany({ id: { $nin: taskIds } }).catch((err: any) =>
+    if (isMongoConnected() && userId) {
+      const taskIds = scopedIncoming.map((t) => t.id);
+      TaskModel.deleteMany({ userId, id: { $nin: taskIds } }).catch((err: any) =>
         console.warn('[DbService] MongoDB task delete notice:', err?.message)
       );
 
-      if (this.data.tasks.length > 0) {
-        const ops = this.data.tasks.map((task) => ({
+      if (scopedIncoming.length > 0) {
+        const ops = scopedIncoming.map((task) => ({
           updateOne: {
-            filter: { id: task.id },
+            filter: { id: task.id, userId },
             update: { $set: task },
             upsert: true,
           },
@@ -380,36 +424,44 @@ export class DbService {
   }
 
   // --- HABITS ---
-  public getHabits(): Habit[] {
+  public getHabits(userId?: string): Habit[] {
     this.reloadIfDiskExists();
+    if (userId) {
+      return this.data.habits.filter((h) => h.userId === userId);
+    }
     return this.data.habits;
   }
 
-  public syncHabits(clientHabits: Habit[]): void {
+  public syncHabits(clientHabits: Habit[], userId?: string): void {
     if (!Array.isArray(clientHabits)) return;
     this.reloadIfDiskExists();
+    const scopedIncoming = userId
+      ? clientHabits.map((h) => ({ ...h, userId: h.userId || userId }))
+      : clientHabits;
+    const otherUserHabits = userId ? this.data.habits.filter((h) => h.userId && h.userId !== userId) : [];
+
     // Deduplicate by habit ID
     const habitMap = new Map<string, Habit>();
-    for (const h of clientHabits) {
+    for (const h of scopedIncoming) {
       if (!h || !h.id) continue;
       habitMap.set(h.id, h);
     }
-    const newHabits = Array.from(habitMap.values());
+    const newHabits = [...otherUserHabits, ...Array.from(habitMap.values())];
     if (JSON.stringify(newHabits) === JSON.stringify(this.data.habits)) {
       return; // No changes, skip disk write completely
     }
     this.data.habits = newHabits;
     this.persistData();
 
-    if (isMongoConnected()) {
-      const habitIds = this.data.habits.map((h) => h.id);
-      HabitModel.deleteMany({ id: { $nin: habitIds } }).catch(() => {});
-      HabitCompletionModel.deleteMany({ habitId: { $nin: habitIds } }).catch(() => {});
+    if (isMongoConnected() && userId) {
+      const habitIds = scopedIncoming.map((h) => h.id);
+      HabitModel.deleteMany({ userId, id: { $nin: habitIds } }).catch(() => {});
+      HabitCompletionModel.deleteMany({ userId, habitId: { $nin: habitIds } }).catch(() => {});
 
-      if (this.data.habits.length > 0) {
-        const ops = this.data.habits.map((habit) => ({
+      if (scopedIncoming.length > 0) {
+        const ops = scopedIncoming.map((habit) => ({
           updateOne: {
-            filter: { id: habit.id },
+            filter: { id: habit.id, userId },
             update: { $set: habit },
             upsert: true,
           },
@@ -422,43 +474,51 @@ export class DbService {
   }
 
   // --- HABIT COMPLETIONS ---
-  public getHabitCompletions(): HabitCompletion[] {
+  public getHabitCompletions(userId?: string): HabitCompletion[] {
     this.reloadIfDiskExists();
+    if (userId) {
+      return this.data.habitCompletions.filter((c) => c.userId === userId);
+    }
     return this.data.habitCompletions;
   }
 
-  public syncHabitCompletions(clientCompletions: HabitCompletion[]): void {
+  public syncHabitCompletions(clientCompletions: HabitCompletion[], userId?: string): void {
     if (!Array.isArray(clientCompletions)) return;
     this.reloadIfDiskExists();
+    const scopedIncoming = userId
+      ? clientCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+      : clientCompletions;
+    const otherUserComps = userId ? this.data.habitCompletions.filter((c) => c.userId && c.userId !== userId) : [];
+
     // Deduplicate by habitId + date: guarantee exactly 1 completion record per habit per day
     const compMap = new Map<string, HabitCompletion>();
-    for (const c of clientCompletions) {
+    for (const c of scopedIncoming) {
       if (!c || !c.habitId || !c.date) continue;
       const key = `${c.habitId}_${c.date}`;
       compMap.set(key, c);
     }
-    const newComps = Array.from(compMap.values());
+    const newComps = [...otherUserComps, ...Array.from(compMap.values())];
     if (JSON.stringify(newComps) === JSON.stringify(this.data.habitCompletions)) {
       return; // No changes, skip disk write completely
     }
     this.data.habitCompletions = newComps;
     this.persistData();
 
-    if (isMongoConnected()) {
-      const compKeys = this.data.habitCompletions.map((c) => `${c.habitId}_${c.date}`);
-      HabitCompletionModel.find().lean().then((existing: any[]) => {
+    if (isMongoConnected() && userId) {
+      const compKeys = scopedIncoming.map((c) => `${c.habitId}_${c.date}`);
+      HabitCompletionModel.find({ userId }).lean().then((existing: any[]) => {
         const toDelete = existing
           .filter((c) => !compKeys.includes(`${c.habitId}_${c.date}`))
           .map((c) => c._id);
         if (toDelete.length > 0) {
-          HabitCompletionModel.deleteMany({ _id: { $in: toDelete } }).catch(() => {});
+          HabitCompletionModel.deleteMany({ userId, _id: { $in: toDelete } }).catch(() => {});
         }
       }).catch(() => {});
 
-      if (this.data.habitCompletions.length > 0) {
-        const ops = this.data.habitCompletions.map((comp) => ({
+      if (scopedIncoming.length > 0) {
+        const ops = scopedIncoming.map((comp) => ({
           updateOne: {
-            filter: { habitId: comp.habitId, date: comp.date },
+            filter: { habitId: comp.habitId, date: comp.date, userId },
             update: { $set: comp },
             upsert: true,
           },
@@ -482,6 +542,52 @@ export class DbService {
       return; // No changes, skip disk write completely
     }
     this.data.dailyPriorities = priorities;
+    this.persistData();
+  }
+
+  // --- FOCUS SESSIONS ---
+  public getFocusSessions(userId?: string): FocusSession[] {
+    this.reloadIfDiskExists();
+    const all = this.data.focusSessions || [];
+    if (!userId) return all;
+    return all.filter((s) => s.userId === userId);
+  }
+
+  public saveFocusSession(session: FocusSession, userId: string): void {
+    this.reloadIfDiskExists();
+    if (!this.data.focusSessions) {
+      this.data.focusSessions = [];
+    }
+    const fullSession = { ...session, userId };
+    const idx = this.data.focusSessions.findIndex((s) => s.id === session.id && s.userId === userId);
+    if (idx >= 0) {
+      this.data.focusSessions[idx] = fullSession;
+    } else {
+      this.data.focusSessions.unshift(fullSession);
+    }
+    this.persistData();
+  }
+
+  public deleteFocusSession(id: string, userId: string): boolean {
+    this.reloadIfDiskExists();
+    if (!this.data.focusSessions) return false;
+    const initialLen = this.data.focusSessions.length;
+    this.data.focusSessions = this.data.focusSessions.filter((s) => !(s.id === id && s.userId === userId));
+    const deleted = this.data.focusSessions.length < initialLen;
+    if (deleted) {
+      this.persistData();
+    }
+    return deleted;
+  }
+
+  public syncFocusSessions(sessions: FocusSession[], userId: string): void {
+    this.reloadIfDiskExists();
+    if (!this.data.focusSessions) {
+      this.data.focusSessions = [];
+    }
+    const otherUsersSessions = this.data.focusSessions.filter((s) => s.userId && s.userId !== userId);
+    const userSessions = sessions.map((s) => ({ ...s, userId }));
+    this.data.focusSessions = [...userSessions, ...otherUsersSessions];
     this.persistData();
   }
 

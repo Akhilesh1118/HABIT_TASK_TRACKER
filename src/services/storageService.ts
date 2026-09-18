@@ -140,15 +140,53 @@ class StorageService {
 
   // --- USER API ---
   public getUser(): User {
+    if (typeof window === 'undefined') {
+      return { id: 'usr_default', name: 'Student', email: 'user@example.com', createdAt: new Date().toISOString() };
+    }
     const data = localStorage.getItem(STORAGE_KEYS.USER);
     if (!data) return { id: 'usr_default', name: 'Student', email: 'user@example.com', createdAt: new Date().toISOString() };
-    return JSON.parse(data);
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && parsed.id) return parsed;
+    } catch {}
+    return { id: 'usr_default', name: 'Student', email: 'user@example.com', createdAt: new Date().toISOString() };
+  }
+
+  public getAuthenticatedUserId(): string {
+    return this.getUser().id;
+  }
+
+  public setCurrentUser(user: { id: string; email: string; name?: string; role?: string }): User {
+    const current = this.getUser();
+    if (current.id && current.id !== user.id && typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEYS.TASKS);
+      localStorage.removeItem(STORAGE_KEYS.HABITS);
+      localStorage.removeItem(STORAGE_KEYS.HABIT_COMPLETIONS);
+      localStorage.removeItem(STORAGE_KEYS.DAILY_PRIORITIES);
+      localStorage.removeItem(STORAGE_KEYS.FOCUS_SESSIONS);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_FOCUS_TIMER);
+      localStorage.removeItem(STORAGE_KEYS.SPACED_REVISIONS);
+      localStorage.removeItem(STORAGE_KEYS.STREAK_PROTECTION);
+    }
+
+    const updated: User = {
+      id: user.id,
+      email: user.email,
+      name: user.name || (current.id === user.id ? current.name : 'User'),
+      createdAt: current.id === user.id ? current.createdAt : new Date().toISOString(),
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+    }
+    return updated;
   }
 
   public updateUser(user: Partial<User>): User {
     const current = this.getUser();
     const updated = { ...current, ...user };
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
+    }
     return updated;
   }
 
@@ -257,8 +295,11 @@ class StorageService {
     }
 
     // Create new
+    const currentUser = this.getUser();
+    const resolvedUserId = taskData.userId && taskData.userId !== 'usr_default' ? taskData.userId : currentUser.id;
     const newTask: Task = {
       ...taskData,
+      userId: resolvedUserId,
       id: taskData.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       scheduledDate,
       date: scheduledDate,
@@ -293,6 +334,42 @@ class StorageService {
 
     this.syncWithServer();
     return newTask;
+  }
+
+  public setTaskCompletion(taskId: string, completed: boolean): Task | null {
+    const tasks = this.getTasks();
+    const index = tasks.findIndex((t) => t.id === taskId);
+    if (index === -1) return null;
+
+    const task = tasks[index];
+    const now = new Date().toISOString();
+    task.completed = completed;
+    task.status = completed ? 'completed' : 'pending';
+    task.completedAt = completed ? (task.completedAt || now) : null;
+    task.updatedAt = now;
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+
+    // Call server to persist completion state immediately
+    authenticatedFetch(`/api/tasks/${taskId}/complete`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        completed: task.completed,
+        status: task.status,
+        completedAt: task.completedAt,
+      }),
+    }).catch(() => {});
+
+    // If this task is a revision task, synchronize with the revision schedule step
+    if (task.isRevisionTask && task.revisionScheduleId && task.revisionStepIndex !== undefined) {
+      if (task.completed) {
+        this.markRevisionStepComplete(task.revisionScheduleId, task.revisionStepIndex);
+      } else {
+        this.unmarkRevisionStepComplete(task.revisionScheduleId, task.revisionStepIndex);
+      }
+    }
+
+    this.syncWithServer();
+    return task;
   }
 
   public toggleTaskCompletion(taskId: string): Task | null {
@@ -376,8 +453,11 @@ class StorageService {
       }
     }
 
+    const currentUser = this.getUser();
+    const resolvedUserId = habitData.userId && habitData.userId !== 'usr_default' ? habitData.userId : currentUser.id;
     const newHabit: Habit = {
       ...habitData,
+      userId: resolvedUserId,
       id: `habit_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       createdAt: now,
     };
@@ -576,21 +656,65 @@ class StorageService {
   }
 
   // --- UNIFIED DAY ITEMS & PROGRESS ---
+  public getTaskCompletionDate(task: Task): string | null {
+    if (!task.completed && task.status !== 'completed') return null;
+    if (task.completedAt) {
+      try {
+        const d = new Date(task.completedAt);
+        if (!isNaN(d.getTime())) {
+          return getCurrentIST(d).dateStr;
+        }
+      } catch {
+        if (task.completedAt.includes('T')) {
+          return task.completedAt.split('T')[0];
+        }
+      }
+    }
+    return task.scheduledDate || task.date || null;
+  }
+
   public getDayItems(dateStr: string): DailySummaryItem[] {
-    const tasks = this.getTasksByDate(dateStr);
+    const allTasks = this.getTasks();
+    const scheduledTasks = this.getTasksByDate(dateStr);
+    const scheduledTaskIds = new Set(scheduledTasks.map((t) => t.id));
+
+    // Rollover completed tasks: scheduled on an earlier date, but actually completed on dateStr
+    const completedOnThisDateTasks = allTasks.filter((t) => {
+      if (!t.completed && t.status !== 'completed') return false;
+      const compDate = this.getTaskCompletionDate(t);
+      return compDate === dateStr && !scheduledTaskIds.has(t.id);
+    });
+
     const habits = this.getHabits().filter((h) => h.active && h.startDate <= dateStr);
     const completions = this.getHabitCompletions().filter((c) => c.date === dateStr && c.completed);
     const completedHabitIdSet = new Set(completions.map((c) => c.habitId));
     const priorityIds = this.getDailyPriorities(dateStr);
 
-    const taskItems: DailySummaryItem[] = tasks.map((t) => {
+    const taskItems: DailySummaryItem[] = [];
+
+    // 1. Process tasks planned/scheduled for dateStr
+    for (const t of scheduledTasks) {
       const pIndex = priorityIds.indexOf(t.id);
       const isTop = pIndex !== -1;
-      return {
+
+      // Semantic completion: was this task completed on or before dateStr?
+      let isCompletedOnDate = false;
+      if (t.completed || t.status === 'completed') {
+        const compDate = this.getTaskCompletionDate(t);
+        if (compDate) {
+          // If viewing a past date (e.g. Sep 17) and completed on a later date (Sep 18),
+          // on Sep 17 it was NOT completed yet.
+          isCompletedOnDate = compDate <= dateStr;
+        } else {
+          isCompletedOnDate = true;
+        }
+      }
+
+      taskItems.push({
         id: t.id,
         title: t.title,
         category: t.category,
-        completed: t.completed,
+        completed: isCompletedOnDate,
         isHabit: false,
         duration: t.duration,
         description: t.description,
@@ -612,8 +736,42 @@ class StorageService {
         revisionDayOffset: t.revisionDayOffset,
         revisionTopic: t.revisionTopic,
         revisionSubject: t.revisionSubject,
-      };
-    });
+      });
+    }
+
+    // 2. Process tasks completed on dateStr that originated from an earlier scheduled date
+    for (const t of completedOnThisDateTasks) {
+      const pIndex = priorityIds.indexOf(t.id);
+      const isTop = pIndex !== -1;
+
+      taskItems.push({
+        id: t.id,
+        title: t.title,
+        category: t.category,
+        completed: true,
+        isHabit: false,
+        duration: t.duration,
+        description: t.description,
+        dueDate: t.dueDate || t.date,
+        dueTime: t.dueTime,
+        recurringSchedule: t.recurringSchedule,
+        isTopPriority: isTop,
+        priorityRank: isTop ? ((pIndex + 1) as 1 | 2 | 3) : undefined,
+        isStudySession: t.isStudySession,
+        studySubject: t.studySubject,
+        studyTopic: t.studyTopic,
+        studyDurationMinutes: t.studyDurationMinutes,
+        questionsAttempted: t.questionsAttempted,
+        questionsCorrect: t.questionsCorrect,
+        accuracy: t.accuracy,
+        isRevisionTask: t.isRevisionTask,
+        revisionScheduleId: t.revisionScheduleId,
+        revisionStepIndex: t.revisionStepIndex,
+        revisionDayOffset: t.revisionDayOffset,
+        revisionTopic: t.revisionTopic,
+        revisionSubject: t.revisionSubject,
+      });
+    }
 
     const habitItems: DailySummaryItem[] = habits.map((h) => {
       const habitItemId = `h_item_${h.id}`;
@@ -736,8 +894,11 @@ class StorageService {
     const activeDateSet = new Set<string>();
 
     tasks.forEach((t) => {
-      if (t.completed && t.date) {
-        activeDateSet.add(t.date);
+      if (t.completed || t.status === 'completed') {
+        const compDate = this.getTaskCompletionDate(t);
+        if (compDate) {
+          activeDateSet.add(compDate);
+        }
       }
     });
 
@@ -973,7 +1134,10 @@ class StorageService {
 
     const activeDateSet = new Set<string>();
     tasks.forEach((t) => {
-      if (t.completed && t.date) activeDateSet.add(t.date);
+      if (t.completed || t.status === 'completed') {
+        const compDate = this.getTaskCompletionDate(t);
+        if (compDate) activeDateSet.add(compDate);
+      }
     });
     completions.forEach((c) => {
       if (c.completed && c.date) activeDateSet.add(c.date);
@@ -1535,18 +1699,6 @@ class StorageService {
       }
     >();
 
-    // Canonical baseline data (matches user's target display GK 5h 20m, Quant 4h 10m, Reasoning 3h 40m, English 3h 15m)
-    // If user has not accumulated sufficient custom records yet, this baseline provides the exact study distribution
-    const baselineSubjects: Record<
-      string,
-      { minutes: number; q: number; correct: number; count: number; topics: string[] }
-    > = {
-      GK: { minutes: 320, q: 180, correct: 144, count: 4, topics: ['Indian Polity', 'Modern History', 'Current Affairs'] }, // 5h 20m
-      Quant: { minutes: 250, q: 120, correct: 102, count: 3, topics: ['Ratio & Proportion', 'Profit & Loss', 'Time & Work'] }, // 4h 10m
-      Reasoning: { minutes: 220, q: 100, correct: 88, count: 3, topics: ['Syllogism', 'Blood Relations', 'Coding-Decoding'] }, // 3h 40m
-      English: { minutes: 195, q: 90, correct: 76, count: 3, topics: ['Reading Comprehension', 'Error Spotting', 'Idioms'] }, // 3h 15m
-    };
-
     if (studyTasks.length === 0) {
       return [];
     }
@@ -1573,19 +1725,6 @@ class StorageService {
         existing.topics.add(task.studyTopic);
       }
       map.set(subj, existing);
-    }
-
-    // If any core baseline subject was not in the week's study sessions, include baseline
-    for (const [subj, base] of Object.entries(baselineSubjects)) {
-      if (!map.has(subj)) {
-        map.set(subj, {
-          minutes: base.minutes,
-          questionsAttempted: base.q,
-          questionsCorrect: base.correct,
-          tasksCount: base.count,
-          topics: new Set(base.topics),
-        });
-      }
     }
 
     const result: SubjectStudyTime[] = Array.from(map.entries()).map(([subj, data]) => {
@@ -1727,17 +1866,6 @@ class StorageService {
       }
       return prev;
     }, dayPerformance[0] || { date: targetDateStr, dayName: 'None', completed: 0, total: 0, rate: 0, score: 0, focusSeconds: 0 });
-
-    if (tasksTotal > 0) {
-      const satDay = dayPerformance.find((d) => d.dayName === 'Saturday');
-      const tueDay = dayPerformance.find((d) => d.dayName === 'Tuesday');
-      if (satDay && satDay.total > 0 && satDay.rate <= 60) {
-        weakestDay = satDay;
-      }
-      if (tueDay && tueDay.completed > 0 && tueDay.completed >= (bestDay?.completed || 0) * 0.8) {
-        bestDay = tueDay;
-      }
-    }
 
     // Determine Top Habit across the 7 days
     let topHabit = {
@@ -2215,10 +2343,12 @@ class StorageService {
       General: '#64748b', // Slate
     };
 
-    const tasks = this.getTasksByDate(dateStr);
-    const studyTasks = tasks.filter((t) => t.isStudySession && t.studySubject);
+    const items = this.getDayItems(dateStr);
+    const studyItems = items.filter(
+      (i) => !i.isHabit && i.isStudySession && i.studySubject && i.completed
+    );
 
-    if (studyTasks.length === 0) {
+    if (studyItems.length === 0) {
       return [];
     }
 
@@ -2233,8 +2363,8 @@ class StorageService {
       }
     >();
 
-    for (const task of studyTasks) {
-      const subj = task.studySubject || 'General';
+    for (const item of studyItems) {
+      const subj = item.studySubject || 'General';
       const existing = map.get(subj) || {
         minutes: 0,
         questionsAttempted: 0,
@@ -2243,16 +2373,16 @@ class StorageService {
         topics: new Set<string>(),
       };
 
-      if (task.studyDurationMinutes) {
-        existing.minutes += task.studyDurationMinutes;
+      if (item.studyDurationMinutes) {
+        existing.minutes += item.studyDurationMinutes;
       }
-      if (task.questionsAttempted) {
-        existing.questionsAttempted += task.questionsAttempted;
-        existing.questionsCorrect += task.questionsCorrect || 0;
+      if (item.questionsAttempted) {
+        existing.questionsAttempted += item.questionsAttempted;
+        existing.questionsCorrect += item.questionsCorrect || 0;
       }
       existing.tasksCount += 1;
-      if (task.studyTopic) {
-        existing.topics.add(task.studyTopic);
+      if (item.studyTopic) {
+        existing.topics.add(item.studyTopic);
       }
       map.set(subj, existing);
     }
@@ -2371,6 +2501,9 @@ class StorageService {
           if (Array.isArray(data.habitCompletions)) {
             localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify(data.habitCompletions));
           }
+          if (Array.isArray(data.focusSessions)) {
+            localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(data.focusSessions));
+          }
           if (data.dailyPriorities && typeof data.dailyPriorities === 'object') {
             localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(data.dailyPriorities));
           }
@@ -2468,6 +2601,7 @@ class StorageService {
 
   public clearUserData(): void {
     if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.TASKS);
     localStorage.removeItem(STORAGE_KEYS.HABITS);
     localStorage.removeItem(STORAGE_KEYS.HABIT_COMPLETIONS);
@@ -2498,6 +2632,7 @@ class StorageService {
           tasks: this.getTasks(),
           habits: this.getHabits(),
           habitCompletions: this.getHabitCompletions(),
+          focusSessions: this.getFocusSessions(),
           dailyPriorities: this.getAllDailyPriorities(),
         };
 
@@ -2544,7 +2679,8 @@ class StorageService {
     try {
       const parsed: FocusSession[] = JSON.parse(data);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter((s) => s && !s.id?.startsWith('foc_seed_'));
+      const currentUserId = this.getAuthenticatedUserId();
+      return parsed.filter((s) => s && !s.id?.startsWith('foc_seed_') && (!s.userId || s.userId === currentUserId));
     } catch {
       return [];
     }
@@ -2553,15 +2689,31 @@ class StorageService {
   public saveFocusSession(session: FocusSession): void {
     if (typeof window === 'undefined') return;
     const current = this.getFocusSessions();
+    const userId = this.getAuthenticatedUserId();
+    const sessionWithUser: FocusSession = {
+      ...session,
+      userId: userId || session.userId,
+    };
     const existingIndex = current.findIndex((s) => s.id === session.id);
     let updated: FocusSession[];
     if (existingIndex >= 0) {
       updated = [...current];
-      updated[existingIndex] = session;
+      updated[existingIndex] = sessionWithUser;
     } else {
-      updated = [session, ...current];
+      updated = [sessionWithUser, ...current];
     }
-    localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(updated.slice(0, 100)));
+    localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(updated.slice(0, 200)));
+
+    // Synchronously send to backend /api/focus and trigger full background sync
+    authenticatedFetch('/api/focus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionWithUser),
+    }).catch((err) => {
+      console.warn('[StorageService] Focus session server sync fallback:', err?.message);
+    });
+
+    this.syncWithServer(false);
   }
 
   public deleteFocusSession(id: string): void {
@@ -2569,6 +2721,14 @@ class StorageService {
     const current = this.getFocusSessions();
     const filtered = current.filter((s) => s.id !== id);
     localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(filtered));
+
+    authenticatedFetch(`/api/focus/${id}`, {
+      method: 'DELETE',
+    }).catch((err) => {
+      console.warn('[StorageService] Focus session delete fallback:', err?.message);
+    });
+
+    this.syncWithServer(false);
   }
 
   public getFocusSessionsForDate(date: string): FocusSession[] {
@@ -2577,7 +2737,20 @@ class StorageService {
 
   public getTotalFocusSecondsForDate(date: string): number {
     const sessions = this.getFocusSessionsForDate(date);
-    return sessions.reduce((acc, s) => acc + (s.actualSecondsSpent || 0), 0);
+    const sessionSeconds = sessions.reduce((acc, s) => acc + (s.actualSecondsSpent || 0), 0);
+
+    // Also include study minutes from completed study tasks on this date that don't already have an attached timer session
+    const dayItems = this.getDayItems(date);
+    const studyItems = dayItems.filter(
+      (i) => !i.isHabit && i.isStudySession && i.completed && i.studyDurationMinutes && i.studyDurationMinutes > 0
+    );
+    const sessionTaskIds = new Set(sessions.map((s) => s.taskId).filter(Boolean));
+
+    const taskStudySeconds = studyItems
+      .filter((t) => !sessionTaskIds.has(t.id))
+      .reduce((acc, t) => acc + (t.studyDurationMinutes || 0) * 60, 0);
+
+    return sessionSeconds + taskStudySeconds;
   }
 
   // --- ACTIVE TIMER RESTORATION & DURATION CALCULATIONS ---

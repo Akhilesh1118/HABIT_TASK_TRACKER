@@ -1,10 +1,10 @@
 import express, { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/authMiddleware.ts';
-import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
+import { TaskModel, HabitModel, HabitCompletionModel, FocusSessionModel } from '../models/HabitData.ts';
 import { dbService } from '../services/dbService.ts';
 import { isMongoConnected } from '../services/mongoService.ts';
-import type { Task, Habit, HabitCompletion } from '../../src/types.ts';
+import type { Task, Habit, HabitCompletion, FocusSession } from '../../src/types.ts';
 
 export const syncRouter = express.Router();
 
@@ -15,26 +15,18 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
     let tasks: Task[] = [];
     let habits: Habit[] = [];
     let habitCompletions: HabitCompletion[] = [];
+    let focusSessions: FocusSession[] = [];
     let dailyPriorities: Record<string, string[]> = {};
-
-    const isAdmin = (req as any).user.role === 'admin' || (req as any).user.email === (process.env.INITIAL_ADMIN_EMAIL || 'aky9842@gmail.com').toLowerCase().trim();
 
     if (isMongoConnected()) {
       try {
-        const userFilter = isAdmin
-          ? {
-              $or: [
-                { userId },
-                { userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } },
-                { userId: { $exists: false } },
-              ],
-            }
-          : { userId };
+        const userFilter = { userId };
 
-        const [mTasks, mHabits, mCompletions] = await Promise.all([
+        const [mTasks, mHabits, mCompletions, mFocus] = await Promise.all([
           TaskModel.find(userFilter).sort({ createdAt: -1 }).lean(),
           HabitModel.find(userFilter).sort({ createdAt: 1 }).lean(),
           HabitCompletionModel.find(userFilter).lean(),
+          FocusSessionModel.find(userFilter).sort({ startedAt: -1 }).lean(),
         ]);
         tasks = (mTasks as any[]).map((t) => ({
           ...t,
@@ -45,37 +37,32 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
         }));
         habits = mHabits as any[];
         habitCompletions = mCompletions as any[];
-
-        if (isAdmin) {
-          await Promise.all([
-            TaskModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
-            HabitModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
-            HabitCompletionModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
-          ]);
-        }
+        focusSessions = mFocus as any[];
 
         // Diagnostic logging
         console.log('[BACKEND] GET /api/sync:', {
           endpoint: 'GET /api/sync',
           authenticatedUserId: userId,
-          isAdmin,
           mongoDatabase: mongoose.connection?.name || 'unknown',
           mongoDocumentsReturned: {
             tasks: tasks.length,
             habits: habits.length,
             habitCompletions: habitCompletions.length,
+            focusSessions: focusSessions.length,
           },
         });
       } catch (err: any) {
         console.warn('[SyncRoutes] Error reading from MongoDB, falling back to local:', err?.message);
-        tasks = dbService.getTasks().filter((t) => t.userId === userId || (isAdmin && (!t.userId || t.userId === 'usr_admin')));
-        habits = dbService.getHabits().filter((h) => h.userId === userId || (isAdmin && (!h.userId || h.userId === 'usr_admin')));
-        habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId || (isAdmin && (!c.userId || c.userId === 'usr_admin')));
+        tasks = dbService.getTasks(userId);
+        habits = dbService.getHabits(userId);
+        habitCompletions = dbService.getHabitCompletions(userId);
+        focusSessions = dbService.getFocusSessions(userId);
       }
     } else {
-      tasks = dbService.getTasks().filter((t) => t.userId === userId || (isAdmin && (!t.userId || t.userId === 'usr_admin')));
-      habits = dbService.getHabits().filter((h) => h.userId === userId || (isAdmin && (!h.userId || h.userId === 'usr_admin')));
-      habitCompletions = dbService.getHabitCompletions().filter((c) => c.userId === userId || (isAdmin && (!c.userId || c.userId === 'usr_admin')));
+      tasks = dbService.getTasks(userId);
+      habits = dbService.getHabits(userId);
+      habitCompletions = dbService.getHabitCompletions(userId);
+      focusSessions = dbService.getFocusSessions(userId);
     }
 
     dailyPriorities = dbService.getDailyPriorities();
@@ -85,6 +72,7 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       tasks,
       habits,
       habitCompletions,
+      focusSessions,
       dailyPriorities,
       source: isMongoConnected() ? 'mongodb' : 'local_fallback',
     });
@@ -128,99 +116,86 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const { tasks, habits, habitCompletions, dailyPriorities } = body;
+    const { tasks, habits, habitCompletions, focusSessions, dailyPriorities } = body;
 
     const hasTasks = Array.isArray(tasks);
     const hasHabits = Array.isArray(habits);
     const hasCompletions = Array.isArray(habitCompletions);
+    const hasFocus = Array.isArray(focusSessions);
     const hasPriorities = dailyPriorities !== undefined && typeof dailyPriorities === 'object' && !Array.isArray(dailyPriorities);
 
-    if (!hasTasks && !hasHabits && !hasCompletions && !hasPriorities) {
+    if (!hasTasks && !hasHabits && !hasCompletions && !hasFocus && !hasPriorities) {
       return res.status(400).json({
         success: false,
-        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, dailyPriorities) must be provided.',
+        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, focusSessions, dailyPriorities) must be provided.',
       });
     }
 
     // 1. Authoritative synchronization in MongoDB
     if (isMongoConnected()) {
       try {
-        // Tasks
-        if (hasTasks) {
-          const taskIds = tasks.map((t: Task) => t.id).filter(Boolean);
-          // Delete any tasks in MongoDB that are NOT in the incoming list for this user
-          await TaskModel.deleteMany({ userId, id: { $nin: taskIds } });
-
-          if (tasks.length > 0) {
-            const taskOps = tasks.map((task: Task) => {
-              const scheduledDate = task.scheduledDate || task.date || task.dueDate || (task.createdAt ? task.createdAt.split('T')[0] : '');
-              const isCompleted = Boolean(task.completed || task.status === 'completed');
-              const status = task.status || (isCompleted ? 'completed' : 'pending');
-              const completedAt = isCompleted ? (task.completedAt || new Date().toISOString()) : null;
-              return {
-                updateOne: {
-                  filter: { id: task.id },
-                  update: {
-                    $set: {
-                      ...task,
-                      scheduledDate,
-                      date: scheduledDate,
-                      status,
-                      completed: isCompleted,
-                      completedAt,
-                      userId,
-                    },
+        // Tasks - Non-destructive upsert of incoming tasks
+        if (hasTasks && tasks.length > 0) {
+          const taskOps = tasks.map((task: Task) => {
+            const scheduledDate = task.scheduledDate || task.date || task.dueDate || (task.createdAt ? task.createdAt.split('T')[0] : '');
+            const isCompleted = Boolean(task.completed || task.status === 'completed');
+            const status = task.status || (isCompleted ? 'completed' : 'pending');
+            const completedAt = isCompleted ? (task.completedAt || new Date().toISOString()) : null;
+            return {
+              updateOne: {
+                filter: { id: task.id, userId },
+                update: {
+                  $set: {
+                    ...task,
+                    scheduledDate,
+                    date: scheduledDate,
+                    status,
+                    completed: isCompleted,
+                    completedAt,
+                    userId,
                   },
-                  upsert: true,
                 },
-              };
-            });
-            await (TaskModel as any).bulkWrite(taskOps);
-          }
-        }
-
-        // Habits
-        if (Array.isArray(habits)) {
-          const habitIds = habits.map((h: Habit) => h.id).filter(Boolean);
-          // Delete any habits in MongoDB that are NOT in the incoming list for this user
-          await HabitModel.deleteMany({ userId, id: { $nin: habitIds } });
-          // Also delete completions for deleted habits
-          await HabitCompletionModel.deleteMany({ userId, habitId: { $nin: habitIds } });
-
-          if (habits.length > 0) {
-            const habitOps = habits.map((habit: Habit) => ({
-              updateOne: {
-                filter: { id: habit.id },
-                update: { $set: { ...habit, userId } },
                 upsert: true,
               },
-            }));
-            await (HabitModel as any).bulkWrite(habitOps);
-          }
+            };
+          });
+          await (TaskModel as any).bulkWrite(taskOps);
         }
 
-        // Habit Completions
-        if (Array.isArray(habitCompletions)) {
-          const compKeys = habitCompletions.map((c: HabitCompletion) => `${c.habitId}_${c.date}`);
-          // Remove completions for this user that are not in incoming list
-          const existing = await HabitCompletionModel.find({ userId }).lean();
-          const toDelete = (existing as any[])
-            .filter((c) => !compKeys.includes(`${c.habitId}_${c.date}`))
-            .map((c) => c._id);
-          if (toDelete.length > 0) {
-            await HabitCompletionModel.deleteMany({ _id: { $in: toDelete } });
-          }
+        // Habits - Non-destructive upsert of incoming habits
+        if (Array.isArray(habits) && habits.length > 0) {
+          const habitOps = habits.map((habit: Habit) => ({
+            updateOne: {
+              filter: { id: habit.id, userId },
+              update: { $set: { ...habit, userId } },
+              upsert: true,
+            },
+          }));
+          await (HabitModel as any).bulkWrite(habitOps);
+        }
 
-          if (habitCompletions.length > 0) {
-            const compOps = habitCompletions.map((comp: HabitCompletion) => ({
-              updateOne: {
-                filter: { habitId: comp.habitId, date: comp.date },
-                update: { $set: { ...comp, userId } },
-                upsert: true,
-              },
-            }));
-            await (HabitCompletionModel as any).bulkWrite(compOps);
-          }
+        // Habit Completions - Non-destructive upsert of incoming habit completions
+        if (Array.isArray(habitCompletions) && habitCompletions.length > 0) {
+          const compOps = habitCompletions.map((comp: HabitCompletion) => ({
+            updateOne: {
+              filter: { habitId: comp.habitId, date: comp.date, userId },
+              update: { $set: { ...comp, userId } },
+              upsert: true,
+            },
+          }));
+          await (HabitCompletionModel as any).bulkWrite(compOps);
+        }
+
+        // Focus Sessions - authoritative upsert preserving all user history
+        if (Array.isArray(focusSessions) && focusSessions.length > 0) {
+          const focusOps = focusSessions.map((session: FocusSession) => ({
+            updateOne: {
+              filter: { id: session.id, userId },
+              update: { $set: { ...session, userId } },
+              upsert: true,
+            },
+          }));
+          await (FocusSessionModel as any).bulkWrite(focusOps);
         }
       } catch (mongoErr: any) {
         console.warn('[SyncRoutes] Authoritative MongoDB sync warning:', mongoErr?.message);
@@ -233,8 +208,11 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     if (hasHabits) syncPayload.habits = habits;
     if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
     if (hasPriorities) syncPayload.dailyPriorities = dailyPriorities;
+    if (hasFocus) {
+      dbService.syncFocusSessions(focusSessions, userId);
+    }
 
-    const result = dbService.syncData(syncPayload);
+    const result = dbService.syncData(syncPayload, userId);
 
     return res.status(200).json({
       success: true,
@@ -244,6 +222,7 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
         tasks: result.tasksCount,
         habits: result.habitsCount,
         habitCompletions: result.completionsCount,
+        focusSessions: hasFocus ? focusSessions.length : undefined,
       },
     });
   } catch (err: any) {
