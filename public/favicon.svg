@@ -1,0 +1,29 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="refLeafMain" x1="14" y1="4" x2="36" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4ADE80" />
+      <stop offset="50%" stop-color="#22C55E" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="refLeafHighlight" x1="18" y1="6" x2="32" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#86EFAC" />
+      <stop offset="60%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="refCircleBody" x1="10" y1="18" x2="36" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0D9488" />
+      <stop offset="50%" stop-color="#0F766E" />
+      <stop offset="100%" stop-color="#064E3B" />
+    </linearGradient>
+    <linearGradient id="refProgressArc" x1="8" y1="20" x2="36" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <path d="M22 24C20 16 24 7 34 5C34 13 30 21 24 25.5C23.2 26 22.5 25.2 22 24Z" fill="url(#refLeafMain)" />
+  <path d="M17 26C15 18 19 8 30 5C32 5 33 6.5 31.5 8C27 12.5 24 18 24 25C24 26.5 23 27 21.5 27C19.5 27 18 26.8 17 26Z" fill="url(#refLeafHighlight)" opacity="0.95" />
+  <path d="M23 24C25 18 28 12 33 6.5" stroke="#DCFCE7" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8" />
+  <circle cx="22" cy="31" r="12.5" stroke="url(#refProgressArc)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="60 18" transform="rotate(-55 22 31)" />
+  <circle cx="22" cy="31" r="11" fill="url(#refCircleBody)" />
+  <path d="M17.5 31L20.5 34L26.5 28" stroke="#FFFFFF" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
