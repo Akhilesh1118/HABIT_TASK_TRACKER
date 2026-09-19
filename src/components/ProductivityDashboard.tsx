@@ -218,47 +218,47 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
       {/* Top Controls: View Toggle & Date Stepper */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-stone-200 shadow-xs">
         {/* Daily vs Weekly Toggle */}
-        <div className="flex items-center p-1 bg-stone-100 rounded-lg max-w-fit">
+        <div className="flex items-center p-1 bg-stone-100 rounded-lg w-full sm:w-auto justify-center sm:justify-start">
           <button
             id="analytics-daily-toggle-btn"
             onClick={() => setViewMode('daily')}
-            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 sm:px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
               viewMode === 'daily'
                 ? 'bg-white text-stone-900 shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Calendar className="w-4 h-4 text-emerald-600" />
+            <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Daily View</span>
           </button>
           <button
             id="analytics-weekly-toggle-btn"
             onClick={() => setViewMode('weekly')}
-            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 sm:px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
               viewMode === 'weekly'
                 ? 'bg-white text-stone-900 shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <CalendarDays className="w-4 h-4 text-indigo-600" />
+            <CalendarDays className="w-4 h-4 text-indigo-600 shrink-0" />
             <span>Weekly View</span>
           </button>
         </div>
 
         {/* Date Navigation Stepper */}
-        <div className="flex items-center justify-between sm:justify-end space-x-2">
+        <div className="flex items-center justify-between sm:justify-end space-x-2 w-full sm:w-auto">
           {viewMode === 'daily' ? (
             <>
               <button
                 id="analytics-prev-day-btn"
                 onClick={handlePrevDay}
-                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors"
+                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors shrink-0"
                 title="Previous Day"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="text-center px-2">
-                <div className="text-xs sm:text-sm font-semibold text-stone-900">
+              <div className="text-center px-2 flex-1 sm:flex-initial">
+                <div className="text-xs sm:text-sm font-semibold text-stone-900 truncate">
                   {formattedDateTitle}
                 </div>
                 {isToday && (
@@ -270,7 +270,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               <button
                 id="analytics-next-day-btn"
                 onClick={handleNextDay}
-                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors"
+                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors shrink-0"
                 title="Next Day"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -279,7 +279,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
                 <button
                   id="analytics-jump-today-btn"
                   onClick={() => onSelectDate(currentTodayDate)}
-                  className="ml-2 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors"
+                  className="ml-1 sm:ml-2 px-2 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors shrink-0"
                 >
                   Today
                 </button>
@@ -290,13 +290,13 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               <button
                 id="analytics-prev-week-btn"
                 onClick={handlePrevWeek}
-                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors"
+                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors shrink-0"
                 title="Previous Week"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="text-center px-2">
-                <div className="text-xs sm:text-sm font-semibold text-stone-900">
+              <div className="text-center px-2 flex-1 sm:flex-initial">
+                <div className="text-xs sm:text-sm font-semibold text-stone-900 truncate">
                   {weeklyData.weekLabel}
                 </div>
                 <span className="inline-block text-[10px] text-stone-500 font-medium">
@@ -306,7 +306,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               <button
                 id="analytics-next-week-btn"
                 onClick={handleNextWeek}
-                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors"
+                className="p-1.5 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors shrink-0"
                 title="Next Week"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -322,29 +322,29 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
       {viewMode === 'daily' && (
         <div className="space-y-6">
           {/* Main Hero Productivity Card (Matching User Example & Format) */}
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-xs">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-stone-100">
-              <div className="flex items-start sm:items-center space-x-4">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-stone-900 text-white flex flex-col items-center justify-center shadow-sm shrink-0">
-                  <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <div className="bg-white rounded-2xl border border-stone-200 p-4 sm:p-6 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-stone-100">
+              <div className="flex items-start sm:items-center space-x-3.5 sm:space-x-4">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-stone-900 text-white flex flex-col items-center justify-center shadow-sm shrink-0">
+                  <span className="text-xl sm:text-3xl font-extrabold tracking-tight">
                     {dailyScore.totalScore}%
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-stone-400 font-medium">
                     Score
                   </span>
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-extrabold text-stone-500 uppercase tracking-widest">
+                    <span className="text-[11px] sm:text-xs font-extrabold text-stone-500 uppercase tracking-widest">
                       PRODUCTIVITY
                     </span>
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${dailyScore.gradeColor}`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold border ${dailyScore.gradeColor}`}
                     >
                       Grade {dailyScore.grade}
                     </span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight mt-0.5">
+                  <h2 className="text-lg sm:text-2xl font-bold text-stone-900 tracking-tight mt-0.5">
                     {dailyScore.summaryPhrase}
                   </h2>
                   <p className="text-xs text-stone-500 mt-1">
@@ -354,11 +354,11 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center space-x-2 shrink-0">
+              <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-stone-100">
                 <button
                   id="toggle-transparent-formula-btn"
                   onClick={() => setShowFormulaDetails(!showFormulaDetails)}
-                  className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-800 transition-colors"
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-800 transition-colors flex-1 sm:flex-initial justify-center"
                 >
                   <Info className="w-3.5 h-3.5 text-stone-600" />
                   <span>{showFormulaDetails ? 'Hide Formula' : 'Transparent Scoring'}</span>
@@ -372,7 +372,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
                   <button
                     id="daily-hero-start-focus-btn"
                     onClick={onStartFocusSession}
-                    className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                    className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors flex-1 sm:flex-initial justify-center"
                   >
                     <Play className="w-3.5 h-3.5 fill-white" />
                     <span>Focus Timer</span>
@@ -382,7 +382,7 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
             </div>
 
             {/* Exact Factors Matrix (Prompt Example Format) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 pt-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 pt-4 sm:pt-5">
               {dailyScore.factors.map((factor) => {
                 const getFactorIcon = (id: string) => {
                   switch (id) {

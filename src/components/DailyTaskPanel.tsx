@@ -75,6 +75,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   const completedItems = items.filter((i) => i.completed).length;
   const percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   const isToday = selectedDate === todayDate;
+  const isFuture = selectedDate > todayDate;
 
   // Separate Top 3 priorities from Other tasks (strictly mutually exclusive)
   const priorityItems = items
@@ -181,14 +182,14 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-5 sm:p-6 flex flex-col h-full">
+    <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-3.5 sm:p-6 flex flex-col h-full">
       {/* Header & Date */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 sm:pb-4 border-b border-stone-100">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
+          <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-emerald-600">
             Selected Day Plan
           </span>
-          <h2 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+          <h2 className="text-lg sm:text-2xl font-bold text-stone-900 tracking-tight">
             {formatFriendlyDate(selectedDate, todayDate)}
           </h2>
         </div>
@@ -197,7 +198,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
         <button
           id="add-task-btn"
           onClick={onAddTask}
-          className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs active:scale-98"
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 sm:py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs active:scale-98 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Add Task</span>
@@ -510,12 +511,16 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                       {/* Checkbox */}
                       <button
                         id={`checkbox-priority-${item.id}`}
-                        onClick={() => onToggleTask(item.id, item.isHabit, item.habitId)}
+                        onClick={() => !isFuture && onToggleTask(item.id, item.isHabit, item.habitId)}
+                        disabled={isFuture}
                         className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
-                          item.completed
+                          isFuture
+                            ? 'border-2 border-stone-200 bg-stone-100 text-stone-300 cursor-not-allowed opacity-60'
+                            : item.completed
                             ? 'bg-emerald-600 text-white'
                             : 'border-2 border-stone-300 hover:border-stone-500 bg-white'
                         }`}
+                        title={isFuture ? 'Future occurrences cannot be completed before their date' : (item.completed ? 'Mark uncompleted' : 'Mark completed')}
                         aria-label={item.completed ? 'Mark uncompleted' : 'Mark completed'}
                       >
                         {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -785,7 +790,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                   <div
                     key={item.id}
                     id={`task-row-${item.id}`}
-                    className={`group flex items-start sm:items-center justify-between p-3 sm:p-3.5 rounded-xl border transition-all ${
+                    className={`group flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 rounded-xl border transition-all gap-2.5 ${
                       item.completed
                         ? 'bg-emerald-50/40 border-emerald-200/80 text-stone-600'
                         : isOverdue
@@ -794,7 +799,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                     }`}
                   >
                     {/* Left: Star to Promote + Checkbox + Info */}
-                    <div className="flex items-start sm:items-center space-x-2.5 flex-1 min-w-0 mr-2">
+                    <div className="flex items-start sm:items-center space-x-2.5 flex-1 min-w-0">
                       {/* Star Button to promote to Top 3 */}
                       <button
                         id={`star-promote-${item.id}`}
@@ -815,12 +820,16 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                       {/* Checkbox */}
                       <button
                         id={`checkbox-${item.id}`}
-                        onClick={() => onToggleTask(item.id, item.isHabit, item.habitId)}
+                        onClick={() => !isFuture && onToggleTask(item.id, item.isHabit, item.habitId)}
+                        disabled={isFuture}
                         className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
-                          item.completed
+                          isFuture
+                            ? 'border-2 border-stone-200 bg-stone-100 text-stone-300 cursor-not-allowed opacity-60'
+                            : item.completed
                             ? 'bg-emerald-600 text-white'
                             : 'border-2 border-stone-300 hover:border-stone-500 bg-white'
                         }`}
+                        title={isFuture ? 'Future occurrences cannot be completed before their date' : (item.completed ? 'Mark uncompleted' : 'Mark completed')}
                         aria-label={item.completed ? 'Mark uncompleted' : 'Mark completed'}
                       >
                         {item.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -980,7 +989,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                     </div>
 
                     {/* Right: Dedicated Completion Status + Action Buttons */}
-                    <div className="flex items-center space-x-2 shrink-0 pl-7 sm:pl-0">
+                    <div className="flex items-center justify-between sm:justify-end space-x-2 w-full sm:w-auto pt-2 border-t border-stone-100/80 sm:pt-0 sm:border-0 shrink-0">
                       {/* Focus Mode Button */}
                       {onStartFocus && !item.completed && (
                         <button

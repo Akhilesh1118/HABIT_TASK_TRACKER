@@ -1,9 +1,9 @@
 import express, { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/authMiddleware.ts';
-import { TaskModel } from '../models/HabitData.ts';
-import { dbService } from '../services/dbService.ts';
-import type { Task } from '../../src/types.ts';
+import { TaskModel, TaskCompletionModel } from '../models/HabitData.ts';
+import { dbService, getTodayISTStr } from '../services/dbService.ts';
+import type { Task, TaskCompletion } from '../../src/types.ts';
 
 export const taskRouter = express.Router();
 
@@ -213,53 +213,107 @@ taskRouter.put('/:id', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/tasks/:id/complete - Mark task complete or uncomplete
+// PATCH /api/tasks/:id/complete - Mark task complete or uncomplete for a specific date occurrence
 taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const taskId = req.params.id;
-    const { completed, completedAt } = req.body || {};
+    const { completed, date, completedAt } = req.body || {};
     const now = new Date().toISOString();
+    const todayIST = getTodayISTStr();
+    const targetDate = date || todayIST;
     const isCompleted = completed !== undefined ? Boolean(completed) : true;
 
-    const updateData: {
-      completed: boolean;
-      status: 'completed' | 'pending';
-      completedAt: string | null;
-      updatedAt: string;
-      userId: string;
-    } = {
-      completed: isCompleted,
-      status: isCompleted ? 'completed' : 'pending',
-      completedAt: isCompleted ? (completedAt || now) : null,
-      updatedAt: now,
-      userId,
-    };
-
-    const doc = await TaskModel.findOneAndUpdate(
-      { id: taskId, userId },
-      { $set: updateData },
-      { new: true }
-    ).lean();
-
-    // Also update dbService
-    const currentTasks = dbService.getTasks(userId);
-    const idx = currentTasks.findIndex((t) => t.id === taskId);
-    if (idx !== -1) {
-      currentTasks[idx] = { ...currentTasks[idx], ...updateData, userId };
-      dbService.syncTasks(currentTasks, userId);
+    if (isCompleted && targetDate > todayIST) {
+      return res.status(400).json({
+        success: false,
+        error: 'A future task cannot be completed before its scheduled date.',
+      });
     }
 
-    if (!doc && idx === -1) {
+    // Find the task definition
+    let task = await TaskModel.findOne({ id: taskId, userId }).lean() as any;
+    if (!task) {
+      const currentTasks = dbService.getTasks(userId);
+      task = currentTasks.find((t) => t.id === taskId);
+    }
+
+    if (!task) {
       return res.status(404).json({
         success: false,
         error: 'Task not found',
       });
     }
 
+    const isRecurring = Boolean(task.recurringSchedule && task.recurringSchedule !== 'none');
+
+    // 1. Manage date-specific TaskCompletion record
+    const compRecord: TaskCompletion = {
+      id: `tc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      taskId,
+      userId,
+      date: targetDate,
+      completed: isCompleted,
+      completedAt: isCompleted ? (completedAt || now) : null,
+    };
+
+    if (isCompleted) {
+      await TaskCompletionModel.findOneAndUpdate(
+        { taskId, date: targetDate, userId },
+        { $set: compRecord },
+        { upsert: true, new: true }
+      ).catch(() => {});
+    } else {
+      await TaskCompletionModel.deleteOne({ taskId, date: targetDate, userId }).catch(() => {});
+    }
+
+    // Sync task completions in dbService
+    const currentComps = dbService.getTaskCompletions(userId);
+    const filteredComps = currentComps.filter((c) => !(c.taskId === taskId && c.date === targetDate));
+    if (isCompleted) {
+      filteredComps.push(compRecord);
+    }
+    dbService.syncTaskCompletions(filteredComps, userId);
+
+    // 2. For non-recurring tasks, also update the main task document for backward compatibility
+    let updatedTaskDoc = task;
+    if (!isRecurring) {
+      const updateData: {
+        completed: boolean;
+        status: 'pending' | 'completed' | 'in_progress';
+        completedAt: string | null;
+        updatedAt: string;
+        userId: string;
+      } = {
+        completed: isCompleted,
+        status: isCompleted ? 'completed' : 'pending',
+        completedAt: isCompleted ? (completedAt || now) : null,
+        updatedAt: now,
+        userId,
+      };
+
+      updatedTaskDoc = await TaskModel.findOneAndUpdate(
+        { id: taskId, userId },
+        { $set: updateData },
+        { new: true }
+      ).lean();
+
+      const currentTasks = dbService.getTasks(userId);
+      const idx = currentTasks.findIndex((t) => t.id === taskId);
+      if (idx !== -1) {
+        currentTasks[idx] = { ...currentTasks[idx], ...updateData, userId };
+        dbService.syncTasks(currentTasks, userId);
+      }
+    }
+
     return res.json({
       success: true,
-      task: doc || currentTasks[idx],
+      task: updatedTaskDoc || task,
+      completion: {
+        taskId,
+        date: targetDate,
+        completed: isCompleted,
+      },
     });
   } catch (err: any) {
     return res.status(500).json({
@@ -269,7 +323,7 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
   }
 });
 
-// DELETE /api/tasks/:id - Delete a task
+// DELETE /api/tasks/:id - Delete a task and its completion records
 taskRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
@@ -291,6 +345,8 @@ taskRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
       if (result.deletedCount && result.deletedCount > 0) {
         deleted = true;
       }
+      // Also delete any task completions
+      await TaskCompletionModel.deleteMany({ taskId, userId }).catch(() => {});
     } catch (dbErr: any) {
       console.warn('[TaskRoutes] MongoDB delete warning:', dbErr?.message);
     }
@@ -303,6 +359,10 @@ taskRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
     }
     const remainingTasks = currentTasks.filter((t) => t.id !== taskId);
     dbService.syncTasks(remainingTasks, userId);
+
+    const currentComps = dbService.getTaskCompletions(userId);
+    const remainingComps = currentComps.filter((c) => c.taskId !== taskId);
+    dbService.syncTaskCompletions(remainingComps, userId);
 
     if (!deleted) {
       return res.status(404).json({

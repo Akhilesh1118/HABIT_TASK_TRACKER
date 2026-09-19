@@ -99,18 +99,18 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-slate-900/60 backdrop-blur-sm animate-fade-in"
     >
       <div
         id="weekly-review-modal-container"
-        className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8"
+        className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-6 py-5 flex items-start justify-between">
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 sm:px-6 py-4 sm:py-5 flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 text-[11px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
                 Productivity Analysis
               </span>
               <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
@@ -118,7 +118,7 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
                 {review.weekLabel}
               </span>
             </div>
-            <h1 id="weekly-review-title" className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-1">
+            <h1 id="weekly-review-title" className="text-xl sm:text-3xl font-black tracking-tight text-white mt-1">
               WEEKLY REVIEW
             </h1>
             <p className="text-xs text-slate-300 mt-1 max-w-md">
@@ -128,7 +128,7 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0"
             title="Close review"
           >
             <X className="w-5 h-5" />
@@ -136,8 +136,8 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-slate-100 px-6 py-2.5 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="bg-slate-100 px-4 sm:px-6 py-2 sm:py-2.5 border-b border-slate-200 flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap gap-y-1">
             <button
               type="button"
               id="modal-tab-weekly-overview"
@@ -187,13 +187,13 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[76vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-h-[76vh] overflow-y-auto">
           {activeTab === 'coach' ? (
             <AICoachCard targetDateStr={review.weekEndDate} className="border-0 shadow-none p-0" />
           ) : (
             <>
               {/* Quick AI Coach Promo Callout */}
-              <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-between gap-3">
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <Sparkles className="w-4 h-4 text-yellow-300" />
@@ -210,7 +210,7 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
                 <button
                   type="button"
                   onClick={() => setActiveTab('coach')}
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center justify-center gap-1 w-full sm:w-auto"
                 >
                   <span>View Analysis</span>
                   <ArrowRight className="w-3 h-3" />
@@ -222,7 +222,7 @@ ${review.insights.map((ins) => `• "${ins.text}"\n  Evidence: ${ins.evidence}`)
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
               Performance Overview
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
               {/* Tasks completed */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <div className="flex items-center justify-between text-xs font-medium text-slate-500">

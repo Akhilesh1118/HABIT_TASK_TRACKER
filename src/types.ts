@@ -75,6 +75,15 @@ export interface HabitCompletion {
   completed: boolean;
 }
 
+export interface TaskCompletion {
+  id: string;
+  taskId: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  completed: boolean;
+  completedAt?: string | null;
+}
+
 export type ActivityLevel = 'none' | 'empty' | 'low' | 'medium' | 'high';
 
 export interface DayActivity {
@@ -451,6 +460,7 @@ export interface StorageLoadResult {
   tasksCount: number;
   habitsCount: number;
   habitCompletionsCount: number;
+  taskCompletionsCount?: number;
   durationMs: number;
   error?: string;
   timedOut?: boolean;

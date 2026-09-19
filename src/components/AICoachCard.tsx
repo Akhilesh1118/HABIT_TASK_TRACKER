@@ -88,18 +88,18 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
       className={`bg-white dark:bg-slate-900 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 shadow-sm hover:shadow-md transition-all overflow-hidden ${className}`}
     >
       {/* Top Header Banner */}
-      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-slate-900 px-6 py-5 border-b border-indigo-100 dark:border-indigo-900/30">
+      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-slate-900 px-4 sm:px-6 py-4 sm:py-5 border-b border-indigo-100 dark:border-indigo-900/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
               <Sparkles className="w-5 h-5 text-yellow-300" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   AI PRODUCTIVITY COACH
                 </h2>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
                   <Brain className="w-3 h-3" />
                   {analysis?.isAiGenerated ? (analysis.modelUsed ? analysis.modelUsed.replace('models/', '') : 'Gemini AI') : 'Ground-Truth Engine'}
                 </span>
@@ -111,7 +111,7 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
             {/* View Mode Switcher */}
             <div className="flex items-center bg-white/80 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
               <button
@@ -147,7 +147,7 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
               type="button"
               id="btn-copy-ai-coach"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors shadow-xs"
               title="Copy analysis text to clipboard"
             >
               {copied ? (
@@ -169,7 +169,7 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
               id="btn-regenerate-ai-coach"
               onClick={() => loadAnalysis(true)}
               disabled={regenerating || loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:scale-98 rounded-lg shadow-xs transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:scale-98 rounded-lg shadow-xs transition-all disabled:opacity-50"
               title="Regenerate analysis with latest application data"
             >
               <RotateCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
@@ -180,7 +180,7 @@ export const AICoachCard: React.FC<AICoachCardProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-10 h-10 rounded-full border-3 border-indigo-200 border-t-indigo-600 animate-spin mb-4" />

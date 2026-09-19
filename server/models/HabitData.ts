@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import type { Habit, HabitCompletion, Task, FocusSession } from '../../src/types.ts';
+import type { Habit, HabitCompletion, TaskCompletion, Task, FocusSession } from '../../src/types.ts';
 
 // 1. Habit Schema
 export interface IHabitDocument extends Habit, Document {
@@ -124,5 +124,30 @@ const FocusSessionSchema: Schema = new Schema(
 export const FocusSessionModel: mongoose.Model<IFocusSessionDocument> =
   (mongoose.models.FocusSession as mongoose.Model<IFocusSessionDocument>) ||
   mongoose.model<IFocusSessionDocument>('FocusSession', FocusSessionSchema);
+
+// 5. Task Completion Schema (Decoupled Date-Specific Occurrences)
+export interface ITaskCompletionDocument extends TaskCompletion, Document {
+  id: string;
+}
+
+const TaskCompletionSchema: Schema = new Schema(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    taskId: { type: String, required: true, index: true },
+    userId: { type: String, required: true, index: true },
+    date: { type: String, required: true, index: true },
+    completed: { type: Boolean, default: true },
+    completedAt: { type: String, default: null },
+  },
+  { timestamps: true, strict: false }
+);
+
+// Compound index for idempotency per task per date per user
+TaskCompletionSchema.index({ taskId: 1, date: 1, userId: 1 }, { unique: true });
+
+export const TaskCompletionModel: mongoose.Model<ITaskCompletionDocument> =
+  (mongoose.models.TaskCompletion as mongoose.Model<ITaskCompletionDocument>) ||
+  mongoose.model<ITaskCompletionDocument>('TaskCompletion', TaskCompletionSchema);
+
 
 

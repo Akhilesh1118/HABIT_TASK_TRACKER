@@ -156,10 +156,10 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
       className="fixed inset-0 z-50 flex flex-col bg-stone-950 text-stone-100 selection:bg-emerald-800 selection:text-white overflow-y-auto"
     >
       {/* Top Bar Navigation */}
-      <header className="w-full max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between shrink-0">
+      <header className="w-full max-w-5xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between shrink-0">
         {/* Brand / Mode Badge */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-stone-900 border border-stone-800 text-xs font-semibold text-emerald-400">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3 py-1 rounded-full bg-stone-900 border border-stone-800 text-[11px] sm:text-xs font-semibold text-emerald-400">
             <span className={`w-2 h-2 rounded-full ${timerState.status === 'running' ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'}`} />
             <span>
               {timerState.isBreakPhase
@@ -180,12 +180,12 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
         </div>
 
         {/* Right utility buttons */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5 sm:space-x-2">
           {/* History Toggle */}
           <button
             id="focus-history-btn"
             onClick={() => setShowHistory(!showHistory)}
-            className={`p-2 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1 ${
+            className={`p-1.5 sm:p-2 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1 ${
               showHistory
                 ? 'bg-stone-800 text-emerald-400 border-stone-700'
                 : 'bg-stone-900 hover:bg-stone-800 text-stone-400 border-stone-800'
@@ -200,7 +200,7 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
           <button
             id="focus-sound-btn"
             onClick={onToggleSound}
-            className="p-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-800 transition-colors"
             title={soundEnabled ? 'Chime sound enabled' : 'Chime muted'}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
@@ -210,7 +210,7 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
           <button
             id="focus-fullscreen-btn"
             onClick={toggleFullscreen}
-            className="p-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-800 transition-colors hidden sm:inline-flex"
+            className="p-1.5 sm:p-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-800 transition-colors hidden sm:inline-flex"
             title="Toggle fullscreen distraction-free mode"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -220,7 +220,7 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
           <button
             id="focus-minimize-btn"
             onClick={onClose}
-            className="p-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-white border border-stone-800 transition-colors flex items-center space-x-1"
+            className="p-1.5 sm:p-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-white border border-stone-800 transition-colors flex items-center space-x-1"
             title="Minimize focus mode to background"
           >
             <X className="w-4 h-4" />
@@ -230,24 +230,24 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
       </header>
 
       {/* Main Distraction-Free Center Stage */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 max-w-3xl w-full mx-auto text-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-3 sm:px-4 py-4 sm:py-8 max-w-3xl w-full mx-auto text-center">
         {/* Task Selector Banner */}
-        <div className="relative mb-6 w-full max-w-xl">
+        <div className="relative mb-4 sm:mb-6 w-full max-w-xl">
           <button
             id="focus-task-select-trigger"
             onClick={() => setShowTaskPicker(!showTaskPicker)}
             disabled={timerState.status === 'running'}
-            className={`w-full group px-5 py-3 rounded-2xl border transition-all flex items-center justify-between ${
+            className={`w-full group px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl border transition-all flex items-center justify-between ${
               timerState.status === 'running'
                 ? 'bg-stone-900/70 border-stone-800/80 cursor-default'
                 : 'bg-stone-900 hover:bg-stone-850 border-stone-800 hover:border-stone-700 cursor-pointer shadow-lg'
             }`}
           >
-            <div className="text-left flex-1 min-w-0 pr-3">
-              <span className="text-[11px] font-semibold tracking-wider text-emerald-400 uppercase block mb-0.5">
+            <div className="text-left flex-1 min-w-0 pr-2 sm:pr-3">
+              <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-emerald-400 uppercase block mb-0.5">
                 Current Objective
               </span>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
+              <h2 className="text-base sm:text-xl font-bold text-white tracking-tight truncate">
                 {timerState.taskTitle}
               </h2>
             </div>
@@ -323,9 +323,9 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
         </div>
 
         {/* Large Timer Display Card */}
-        <div className="relative flex flex-col items-center justify-center p-6 sm:p-10 w-full max-w-lg rounded-3xl bg-stone-900/40 border border-stone-800/80 shadow-2xl backdrop-blur-sm">
+        <div className="relative flex flex-col items-center justify-center p-5 sm:p-10 w-full max-w-lg rounded-3xl bg-stone-900/40 border border-stone-800/80 shadow-2xl backdrop-blur-sm">
           {/* Circular / Line Progress Track */}
-          <div className="w-full h-1.5 bg-stone-800 rounded-full mb-8 overflow-hidden">
+          <div className="w-full h-1.5 bg-stone-800 rounded-full mb-6 sm:mb-8 overflow-hidden">
             <div
               className={`h-full transition-all duration-300 rounded-full ${
                 timerState.isBreakPhase ? 'bg-sky-400' : 'bg-emerald-500'
@@ -337,7 +337,7 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
           {/* Time Display */}
           <div
             id="focus-timer-clock-display"
-            className="text-6xl sm:text-8xl font-black font-mono tracking-tight text-white mb-4 select-none drop-shadow-sm"
+            className="text-5xl sm:text-8xl font-black font-mono tracking-tight text-white mb-3 sm:mb-4 select-none drop-shadow-sm"
           >
             {formatTime(timerState.remainingSeconds)}
           </div>

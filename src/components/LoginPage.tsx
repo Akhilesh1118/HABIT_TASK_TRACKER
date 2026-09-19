@@ -119,7 +119,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-6 sm:py-12 px-3 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex items-center justify-center gap-2.5 mb-2">
           <AppLogo size={40} />
@@ -132,8 +132,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </p>
       </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white py-8 px-6 sm:px-10 shadow-sm border border-stone-200 rounded-2xl">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md w-full">
+        <div className="bg-white py-6 sm:py-8 px-4 sm:px-10 shadow-sm border border-stone-200 rounded-2xl">
           {/* Mode Switcher Tabs */}
           <div className="flex items-center p-1 bg-stone-100 rounded-xl mb-6">
             <button

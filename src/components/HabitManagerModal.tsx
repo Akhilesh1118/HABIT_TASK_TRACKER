@@ -67,15 +67,15 @@ export const HabitManagerModal: React.FC<HabitManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/50 backdrop-blur-xs">
       <div
         id="habits-manager-modal"
-        className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]"
+        className="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[88vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-stone-100">
           <div>
-            <h3 className="text-xl font-bold text-stone-900 tracking-tight">
+            <h3 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">
               Habit System
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
@@ -247,13 +247,13 @@ export const HabitManagerModal: React.FC<HabitManagerModalProps> = ({
                 <div
                   key={habit.id}
                   id={`habit-card-${habit.id}`}
-                  className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
+                  className={`p-3 sm:p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
                     habit.active
                       ? 'bg-white border-stone-200 shadow-xs'
                       : 'bg-stone-50 border-stone-200/60 opacity-60'
                   }`}
                 >
-                  <div className="flex items-start space-x-3 flex-1 min-w-0 mr-3">
+                  <div className="flex items-start space-x-3 flex-1 min-w-0">
                     <div className="pt-0.5">
                       <span className="text-xl leading-none">{catMeta.icon}</span>
                     </div>
@@ -297,11 +297,11 @@ export const HabitManagerModal: React.FC<HabitManagerModalProps> = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center space-x-2 shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 w-full sm:w-auto pt-2 border-t border-stone-100 sm:pt-0 sm:border-0 shrink-0">
                     <button
                       id={`toggle-habit-active-${habit.id}`}
                       onClick={() => onToggleActive(habit.id)}
-                      className={`p-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-colors ${
+                      className={`p-1.5 sm:p-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-colors ${
                         habit.active
                           ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                           : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
@@ -309,13 +309,13 @@ export const HabitManagerModal: React.FC<HabitManagerModalProps> = ({
                       title={habit.active ? 'Habit is active' : 'Habit is paused'}
                     >
                       <Power className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">{habit.active ? 'Active' : 'Paused'}</span>
+                      <span>{habit.active ? 'Active' : 'Paused'}</span>
                     </button>
 
                     <button
                       id={`delete-habit-${habit.id}`}
                       onClick={() => onDeleteHabit(habit.id)}
-                      className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 sm:p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete habit"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

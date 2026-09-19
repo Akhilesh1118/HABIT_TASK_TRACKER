@@ -390,7 +390,7 @@ export const SpacedRevisionModal: React.FC<SpacedRevisionModalProps> = ({
                             {schedule.steps.filter((s) => s.completed).length} of {schedule.steps.length} completed
                           </span>
                         </div>
-                        <div className="grid grid-cols-6 gap-1.5">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                           {schedule.steps.map((s, idx) => {
                             const isCurrent = s.stepIndex === step.stepIndex;
                             return (

@@ -221,8 +221,8 @@ export default function App() {
       } else {
         const allTasks = storageService.getTasks();
         const task = allTasks.find((t) => t.id === taskId);
-        if (task && !task.completed) {
-          storageService.setTaskCompletion(taskId, true);
+        if (task && !storageService.isTaskCompletedOnDate(task, todayDate)) {
+          storageService.setTaskCompletion(taskId, true, todayDate);
         }
       }
       triggerRefresh();
@@ -315,10 +315,15 @@ export default function App() {
 
   // Toggle task or habit completion
   const handleToggleTask = (id: string, isHabit: boolean, habitId?: string) => {
+    const currentToday = getCurrentIST().dateStr;
+    if (selectedDate > currentToday) {
+      console.warn('Cannot complete occurrences on future dates');
+      return;
+    }
     if (isHabit && habitId) {
       storageService.toggleHabitCompletion(habitId, selectedDate);
     } else {
-      storageService.toggleTaskCompletion(id);
+      storageService.toggleTaskCompletion(id, selectedDate);
     }
     triggerRefresh();
   };

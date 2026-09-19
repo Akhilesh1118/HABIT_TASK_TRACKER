@@ -33,16 +33,16 @@ export const MiniFocusBar: React.FC<MiniFocusBarProps> = ({
   return (
     <div
       id="mini-focus-bar"
-      className="fixed bottom-4 right-4 z-40 bg-stone-950 text-white rounded-2xl shadow-2xl border border-stone-800 p-2.5 sm:px-4 sm:py-3 flex items-center space-x-3 sm:space-x-4 animate-in slide-in-from-bottom-5 duration-200 backdrop-blur-md"
+      className="fixed bottom-3 sm:bottom-4 left-3 right-3 sm:left-auto sm:right-4 z-40 bg-stone-950 text-white rounded-2xl shadow-2xl border border-stone-800 p-2.5 sm:px-4 sm:py-3 flex items-center justify-between sm:justify-start space-x-2 sm:space-x-4 animate-in slide-in-from-bottom-5 duration-200 backdrop-blur-md"
     >
       {/* Status Pulse */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 min-w-0">
         <span
-          className={`w-2.5 h-2.5 rounded-full ${
+          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
             isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
           }`}
         />
-        <div className="max-w-[140px] sm:max-w-[200px] truncate">
+        <div className="max-w-[110px] sm:max-w-[200px] truncate">
           <span className="text-[10px] text-stone-400 block leading-tight uppercase font-mono">
             {timerState.isBreakPhase ? 'Break' : 'Focus Session'}
           </span>
@@ -53,12 +53,12 @@ export const MiniFocusBar: React.FC<MiniFocusBarProps> = ({
       </div>
 
       {/* Countdown Timer */}
-      <div className="font-mono font-bold text-sm sm:text-base text-emerald-400 px-2 py-0.5 rounded-lg bg-stone-900 border border-stone-800">
+      <div className="font-mono font-bold text-xs sm:text-base text-emerald-400 px-2 py-0.5 rounded-lg bg-stone-900 border border-stone-800 shrink-0">
         {formatTime(timerState.remainingSeconds)}
       </div>
 
       {/* Quick Controls */}
-      <div className="flex items-center space-x-1 sm:space-x-1.5">
+      <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
         {isRunning ? (
           <button
             onClick={onPause}

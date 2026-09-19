@@ -3,6 +3,7 @@ import {
   Task,
   Habit,
   HabitCompletion,
+  TaskCompletion,
   DailySummaryItem,
   DayActivity,
   ProductivityStats,
@@ -35,6 +36,7 @@ const STORAGE_KEYS = {
   TASKS: 'habits_app_tasks',
   HABITS: 'habits_app_habits',
   HABIT_COMPLETIONS: 'habits_app_habit_completions',
+  TASK_COMPLETIONS: 'habits_app_task_completions',
   DAILY_PRIORITIES: 'habits_app_daily_priorities',
   FOCUS_SESSIONS: 'habits_app_focus_sessions',
   ACTIVE_FOCUS_TIMER: 'habits_app_active_focus_timer',
@@ -93,6 +95,7 @@ function seedInitialData() {
   localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.TASK_COMPLETIONS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify({}));
   localStorage.setItem(STORAGE_KEYS.SPACED_REVISIONS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify([]));
@@ -336,76 +339,142 @@ class StorageService {
     return newTask;
   }
 
-  public setTaskCompletion(taskId: string, completed: boolean): Task | null {
+  // --- TASK COMPLETIONS API (Date-Specific Occurrence Records) ---
+  public getTaskCompletions(): TaskCompletion[] {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem(STORAGE_KEYS.TASK_COMPLETIONS);
+    if (!data) return [];
+    try {
+      const parsed: TaskCompletion[] = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+      const todayIST = getCurrentIST().dateStr;
+      // Deduplicate on the fly by taskId + date and filter out any invalid future completions
+      const uniqueMap = new Map<string, TaskCompletion>();
+      for (const item of parsed) {
+        if (item && item.taskId && item.date) {
+          // Reject completions on future dates
+          if (item.completed && item.date > todayIST) {
+            continue;
+          }
+          const key = `${item.taskId}_${item.date}`;
+          uniqueMap.set(key, item);
+        }
+      }
+      return Array.from(uniqueMap.values());
+    } catch {
+      return [];
+    }
+  }
+
+  public isTaskCompletedOnDate(task: Task, dateStr: string): boolean {
+    const todayIST = getCurrentIST().dateStr;
+    // Under NO circumstances can any occurrence on a future date be completed
+    if (dateStr > todayIST) {
+      return false;
+    }
+    const completions = this.getTaskCompletions();
+    const explicit = completions.find((c) => c.taskId === task.id && c.date === dateStr);
+    if (explicit !== undefined) {
+      return Boolean(explicit.completed);
+    }
+    // For recurring tasks: if there is no explicit completion on dateStr, it is strictly NOT completed
+    if (task.recurringSchedule && task.recurringSchedule !== 'none') {
+      return false;
+    }
+    // For non-recurring one-time tasks: fallback to task.completed ONLY if task was scheduled for dateStr or completedOnDate === dateStr
+    if (task.completed || task.status === 'completed') {
+      const compDate = this.getTaskCompletionDate(task);
+      if (compDate) {
+        return compDate === dateStr;
+      }
+      return (task.scheduledDate || task.date) === dateStr;
+    }
+    return false;
+  }
+
+  public setTaskCompletion(taskId: string, completed: boolean, dateStr?: string): Task | null {
     const tasks = this.getTasks();
     const index = tasks.findIndex((t) => t.id === taskId);
     if (index === -1) return null;
 
     const task = tasks[index];
     const now = new Date().toISOString();
-    task.completed = completed;
-    task.status = completed ? 'completed' : 'pending';
-    task.completedAt = completed ? (task.completedAt || now) : null;
-    task.updatedAt = now;
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    const todayIST = getCurrentIST().dateStr;
+    const targetDate = dateStr || task.scheduledDate || task.date || todayIST;
+    const isRecurring = Boolean(task.recurringSchedule && task.recurringSchedule !== 'none');
 
-    // Call server to persist completion state immediately
+    // Reject completing future task occurrences before their scheduled date
+    if (completed && targetDate > todayIST) {
+      console.warn('Cannot complete a future task before its scheduled date.');
+      return null;
+    }
+
+    // 1. Manage date-specific TaskCompletion record
+    const completions = this.getTaskCompletions();
+    const filteredComps = completions.filter((c) => !(c.taskId === taskId && c.date === targetDate));
+    if (completed) {
+      const user = this.getUser();
+      filteredComps.push({
+        id: `tc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        taskId,
+        userId: user.id,
+        date: targetDate,
+        completed: true,
+        completedAt: now,
+      });
+    }
+    localStorage.setItem(STORAGE_KEYS.TASK_COMPLETIONS, JSON.stringify(filteredComps));
+
+    // 2. For non-recurring tasks, also update the main task object for backward compatibility
+    if (!isRecurring) {
+      task.completed = completed;
+      task.status = completed ? 'completed' : 'pending';
+      task.completedAt = completed ? (task.completedAt || now) : null;
+      task.updatedAt = now;
+      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    }
+
+    // Call server to persist completion state immediately with target occurrence date
     authenticatedFetch(`/api/tasks/${taskId}/complete`, {
       method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        completed: task.completed,
-        status: task.status,
-        completedAt: task.completedAt,
+        completed,
+        date: targetDate,
+        status: completed ? 'completed' : 'pending',
+        completedAt: completed ? now : null,
       }),
     }).catch(() => {});
 
     // If this task is a revision task, synchronize with the revision schedule step
     if (task.isRevisionTask && task.revisionScheduleId && task.revisionStepIndex !== undefined) {
-      if (task.completed) {
+      if (completed) {
         this.markRevisionStepComplete(task.revisionScheduleId, task.revisionStepIndex);
       } else {
         this.unmarkRevisionStepComplete(task.revisionScheduleId, task.revisionStepIndex);
       }
     }
 
-    this.syncWithServer();
+    this.syncWithServer(true);
     return task;
   }
 
-  public toggleTaskCompletion(taskId: string): Task | null {
+  public toggleTaskCompletion(taskId: string, dateStr?: string): Task | null {
     const tasks = this.getTasks();
     const index = tasks.findIndex((t) => t.id === taskId);
     if (index === -1) return null;
 
     const task = tasks[index];
-    const now = new Date().toISOString();
-    task.completed = !task.completed;
-    task.status = task.completed ? 'completed' : 'pending';
-    task.completedAt = task.completed ? now : null;
-    task.updatedAt = now;
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    const todayIST = getCurrentIST().dateStr;
+    const targetDate = dateStr || task.scheduledDate || task.date || todayIST;
+    const isCurrentlyCompleted = this.isTaskCompletedOnDate(task, targetDate);
 
-    // Call server to persist completion state immediately
-    authenticatedFetch(`/api/tasks/${taskId}/complete`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        completed: task.completed,
-        status: task.status,
-        completedAt: task.completedAt,
-      }),
-    }).catch(() => {});
-
-    // If this task is a revision task, synchronize with the revision schedule step
-    if (task.isRevisionTask && task.revisionScheduleId && task.revisionStepIndex !== undefined) {
-      if (task.completed) {
-        this.markRevisionStepComplete(task.revisionScheduleId, task.revisionStepIndex);
-      } else {
-        this.unmarkRevisionStepComplete(task.revisionScheduleId, task.revisionStepIndex);
-      }
+    if (!isCurrentlyCompleted && targetDate > todayIST) {
+      console.warn('Cannot complete a future task before its scheduled date.');
+      return null;
     }
 
-    this.syncWithServer();
-    return task;
+    return this.setTaskCompletion(taskId, !isCurrentlyCompleted, targetDate);
   }
 
   public deleteTask(taskId: string): boolean {
@@ -414,6 +483,10 @@ class StorageService {
     const filtered = tasks.filter((t) => t.id !== taskId);
     if (filtered.length === tasks.length) return false;
     localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(filtered));
+
+    // Also clean up task completions
+    const completions = this.getTaskCompletions().filter((c) => c.taskId !== taskId);
+    localStorage.setItem(STORAGE_KEYS.TASK_COMPLETIONS, JSON.stringify(completions));
 
     if (target) {
       const allPriorities = this.getAllDailyPriorities();
@@ -515,10 +588,15 @@ class StorageService {
     try {
       const parsed: HabitCompletion[] = JSON.parse(data);
       if (!Array.isArray(parsed)) return [];
-      // Deduplicate on the fly by habitId + date to guarantee exactly 1 record per habit per day
+      const todayIST = getCurrentIST().dateStr;
+      // Deduplicate on the fly by habitId + date and filter out any invalid future completions
       const uniqueMap = new Map<string, HabitCompletion>();
       for (const item of parsed) {
         if (item && item.habitId && item.date) {
+          // Reject completions on future dates
+          if (item.completed && item.date > todayIST) {
+            continue;
+          }
           const key = `${item.habitId}_${item.date}`;
           uniqueMap.set(key, item);
         }
@@ -530,9 +608,15 @@ class StorageService {
   }
 
   public toggleHabitCompletion(habitId: string, dateStr: string): boolean {
+    const todayIST = getCurrentIST().dateStr;
     const completions = this.getHabitCompletions();
     const existing = completions.find((c) => c.habitId === habitId && c.date === dateStr);
     const wasCompleted = existing ? existing.completed : false;
+
+    if (!wasCompleted && dateStr > todayIST) {
+      console.warn('Cannot complete a future habit before its scheduled date.');
+      return false;
+    }
 
     // Filter out all existing occurrences for this (habitId, dateStr)
     const filtered = completions.filter((c) => !(c.habitId === habitId && c.date === dateStr));
@@ -678,8 +762,10 @@ class StorageService {
     const scheduledTasks = this.getTasksByDate(dateStr);
     const scheduledTaskIds = new Set(scheduledTasks.map((t) => t.id));
 
-    // Rollover completed tasks: scheduled on an earlier date, but actually completed on dateStr
+    // Rollover completed tasks: one-time tasks scheduled on an earlier date, but actually completed on dateStr
     const completedOnThisDateTasks = allTasks.filter((t) => {
+      const isRecurring = Boolean(t.recurringSchedule && t.recurringSchedule !== 'none');
+      if (isRecurring) return false; // Recurring tasks are date-scoped occurrences, never rolled over
       if (!t.completed && t.status !== 'completed') return false;
       const compDate = this.getTaskCompletionDate(t);
       return compDate === dateStr && !scheduledTaskIds.has(t.id);
@@ -696,19 +782,7 @@ class StorageService {
     for (const t of scheduledTasks) {
       const pIndex = priorityIds.indexOf(t.id);
       const isTop = pIndex !== -1;
-
-      // Semantic completion: was this task completed on or before dateStr?
-      let isCompletedOnDate = false;
-      if (t.completed || t.status === 'completed') {
-        const compDate = this.getTaskCompletionDate(t);
-        if (compDate) {
-          // If viewing a past date (e.g. Sep 17) and completed on a later date (Sep 18),
-          // on Sep 17 it was NOT completed yet.
-          isCompletedOnDate = compDate <= dateStr;
-        } else {
-          isCompletedOnDate = true;
-        }
-      }
+      const isCompletedOnDate = this.isTaskCompletedOnDate(t, dateStr);
 
       taskItems.push({
         id: t.id,
@@ -894,11 +968,18 @@ class StorageService {
     const activeDateSet = new Set<string>();
 
     tasks.forEach((t) => {
-      if (t.completed || t.status === 'completed') {
+      const isRecurring = Boolean(t.recurringSchedule && t.recurringSchedule !== 'none');
+      if (!isRecurring && (t.completed || t.status === 'completed')) {
         const compDate = this.getTaskCompletionDate(t);
         if (compDate) {
           activeDateSet.add(compDate);
         }
+      }
+    });
+
+    this.getTaskCompletions().forEach((tc) => {
+      if (tc.completed && tc.date) {
+        activeDateSet.add(tc.date);
       }
     });
 
@@ -1134,10 +1215,14 @@ class StorageService {
 
     const activeDateSet = new Set<string>();
     tasks.forEach((t) => {
-      if (t.completed || t.status === 'completed') {
+      const isRecurring = Boolean(t.recurringSchedule && t.recurringSchedule !== 'none');
+      if (!isRecurring && (t.completed || t.status === 'completed')) {
         const compDate = this.getTaskCompletionDate(t);
         if (compDate) activeDateSet.add(compDate);
       }
+    });
+    this.getTaskCompletions().forEach((tc) => {
+      if (tc.completed && tc.date) activeDateSet.add(tc.date);
     });
     completions.forEach((c) => {
       if (c.completed && c.date) activeDateSet.add(c.date);
@@ -2501,6 +2586,9 @@ class StorageService {
           if (Array.isArray(data.habitCompletions)) {
             localStorage.setItem(STORAGE_KEYS.HABIT_COMPLETIONS, JSON.stringify(data.habitCompletions));
           }
+          if (Array.isArray(data.taskCompletions)) {
+            localStorage.setItem(STORAGE_KEYS.TASK_COMPLETIONS, JSON.stringify(data.taskCompletions));
+          }
           if (Array.isArray(data.focusSessions)) {
             localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(data.focusSessions));
           }
@@ -2605,6 +2693,7 @@ class StorageService {
     localStorage.removeItem(STORAGE_KEYS.TASKS);
     localStorage.removeItem(STORAGE_KEYS.HABITS);
     localStorage.removeItem(STORAGE_KEYS.HABIT_COMPLETIONS);
+    localStorage.removeItem(STORAGE_KEYS.TASK_COMPLETIONS);
     localStorage.removeItem(STORAGE_KEYS.DAILY_PRIORITIES);
     localStorage.removeItem(STORAGE_KEYS.FOCUS_SESSIONS);
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_FOCUS_TIMER);
@@ -2632,6 +2721,7 @@ class StorageService {
           tasks: this.getTasks(),
           habits: this.getHabits(),
           habitCompletions: this.getHabitCompletions(),
+          taskCompletions: this.getTaskCompletions(),
           focusSessions: this.getFocusSessions(),
           dailyPriorities: this.getAllDailyPriorities(),
         };
@@ -2690,8 +2780,11 @@ class StorageService {
     if (typeof window === 'undefined') return;
     const current = this.getFocusSessions();
     const userId = this.getAuthenticatedUserId();
+    const todayIST = getCurrentIST().dateStr;
+    const sessionDate = session.date && session.date <= todayIST ? session.date : todayIST;
     const sessionWithUser: FocusSession = {
       ...session,
+      date: sessionDate,
       userId: userId || session.userId,
     };
     const existingIndex = current.findIndex((s) => s.id === session.id);

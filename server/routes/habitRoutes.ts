@@ -1,7 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/authMiddleware.ts';
 import { HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
-import { dbService } from '../services/dbService.ts';
+import { dbService, getTodayISTStr } from '../services/dbService.ts';
 import type { Habit, HabitCompletion } from '../../src/types.ts';
 
 export const habitRouter = express.Router();
@@ -256,8 +256,17 @@ habitRouter.post('/:id/toggle', requireAuth, async (req: Request, res: Response)
       });
     }
 
-    const completionId = `hc_${habitId}_${date}`;
+    const todayIST = getTodayISTStr();
     const newStatus = completed !== undefined ? Boolean(completed) : true;
+
+    if (newStatus && date > todayIST) {
+      return res.status(400).json({
+        success: false,
+        error: 'A future habit cannot be completed before its scheduled date.',
+      });
+    }
+
+    const completionId = `hc_${habitId}_${date}`;
 
     try {
       if (newStatus) {

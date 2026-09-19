@@ -117,37 +117,37 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-30">
-      <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-4">
-        {/* Brand & Identity + Main Tab Switcher */}
-        <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0 min-w-0">
+    <header className="border-b border-stone-200 bg-white/95 backdrop-blur-md sticky top-0 z-30 shadow-2xs">
+      <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Brand & Identity + Desktop Tab Switcher */}
+        <div className="flex items-center gap-2 sm:gap-6 flex-shrink-0 min-w-0">
           <button
             id="app-home-logo-btn"
             type="button"
             onClick={handleLogoClick}
             aria-label="Habit & Task Tracker - Go to Home and Today"
             title="Go to Today's Dashboard"
-            className="group flex items-center gap-2.5 sm:gap-3 text-left p-1 rounded-xl hover:bg-stone-100/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:ring-offset-2 transition-all cursor-pointer select-none flex-shrink-0"
+            className="group flex items-center gap-2 sm:gap-3 text-left p-1 rounded-xl hover:bg-stone-100/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:ring-offset-2 transition-all cursor-pointer select-none flex-shrink-0"
           >
             {/* Simple Clean Productivity Brand Logo */}
-            <AppLogo size={42} />
+            <AppLogo size={36} className="sm:w-[42px] sm:h-[42px]" />
 
             <div className="flex flex-col text-left leading-none flex-shrink-0">
-              <span className="text-[14px] sm:text-[16px] font-extrabold text-stone-900 tracking-tight leading-tight group-hover:text-stone-950 transition-colors whitespace-nowrap">
+              <span className="text-[13px] sm:text-[16px] font-extrabold text-stone-900 tracking-tight leading-tight group-hover:text-stone-950 transition-colors whitespace-nowrap">
                 Habit &amp;
               </span>
-              <span className="text-[14px] sm:text-[16px] font-extrabold text-stone-900 tracking-tight leading-tight group-hover:text-stone-950 transition-colors whitespace-nowrap">
+              <span className="text-[13px] sm:text-[16px] font-extrabold text-stone-900 tracking-tight leading-tight group-hover:text-stone-950 transition-colors whitespace-nowrap">
                 Task Tracker
               </span>
-              <span className="text-[8px] sm:text-[9px] font-semibold text-stone-400 tracking-[0.16em] uppercase mt-0.5 leading-none group-hover:text-stone-600 transition-colors whitespace-nowrap">
+              <span className="text-[7.5px] sm:text-[9px] font-semibold text-stone-400 tracking-[0.14em] uppercase mt-0.5 leading-none group-hover:text-stone-600 transition-colors whitespace-nowrap">
                 PLAN • FOCUS • GROW
               </span>
             </div>
           </button>
 
-          {/* Core View Switcher Tabs */}
+          {/* Core View Switcher Tabs (Desktop & Tablet) */}
           {onSelectTab && (
-            <div className="hidden sm:flex items-center p-1 bg-stone-100 rounded-xl text-xs sm:text-sm font-semibold flex-shrink-0">
+            <div className="hidden md:flex items-center p-1 bg-stone-100 rounded-xl text-xs sm:text-sm font-semibold flex-shrink-0">
               <button
                 id="nav-tab-schedule"
                 onClick={() => onSelectTab('schedule')}
@@ -180,24 +180,12 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Action Controls & Badges */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          {/* Mobile Tab Toggle Button */}
-          {onSelectTab && (
-            <button
-              id="mobile-nav-analytics-btn"
-              onClick={() => onSelectTab(activeTab === 'schedule' ? 'analytics' : 'schedule')}
-              className="sm:hidden flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-stone-100 text-stone-800"
-            >
-              <BarChart3 className="w-4 h-4 text-emerald-600" />
-              <span>{activeTab === 'schedule' ? 'Score' : 'Tasks'}</span>
-            </button>
-          )}
-
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
           {/* Streak Badge */}
           <button
             id="streak-badge"
             onClick={onOpenStreakProtection}
-            className={`flex items-center space-x-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all cursor-pointer hover:shadow-md ${
+            className={`flex items-center space-x-1 sm:space-x-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all cursor-pointer hover:shadow-md ${
               streakStatus?.isAtRisk
                 ? 'bg-amber-100 text-amber-950 border border-amber-300 ring-2 ring-amber-400/30 animate-pulse'
                 : streakStatus?.isTodayFrozen
@@ -211,65 +199,65 @@ export const Header: React.FC<HeaderProps> = ({
             ) : streakStatus?.isTodayFrozen ? (
               <Snowflake className="w-4 h-4 text-sky-600" />
             ) : (
-              <Flame className="w-4.5 h-4.5 text-orange-500 fill-orange-500 animate-pulse" />
+              <Flame className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-orange-500 fill-orange-500 animate-pulse" />
             )}
             <span>{currentStreak}d</span>
             {streakStatus?.isAtRisk && (
-              <span className="hidden lg:inline text-[11px] font-bold text-amber-700 bg-amber-200/80 px-1.5 py-0.5 rounded">
+              <span className="hidden xl:inline text-[11px] font-bold text-amber-700 bg-amber-200/80 px-1.5 py-0.5 rounded">
                 At Risk
               </span>
             )}
             {streakStatus?.isTodayFrozen && (
-              <span className="hidden lg:inline text-[11px] font-bold text-sky-700 bg-sky-200/80 px-1.5 py-0.5 rounded">
+              <span className="hidden xl:inline text-[11px] font-bold text-sky-700 bg-sky-200/80 px-1.5 py-0.5 rounded">
                 Frozen
               </span>
             )}
           </button>
 
-          {/* Jump to Today Button */}
+          {/* Jump to Today Button (Desktop) */}
           <button
             id="jump-today-btn"
             onClick={onGoToToday}
-            className="hidden md:flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
+            className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
           >
             <CalendarIcon className="w-4 h-4 text-stone-500" />
             <span>Today</span>
           </button>
 
-          {/* Weekly Review Quick Button */}
+          {/* Weekly Review Quick Button (Desktop / Tablet) */}
           {onOpenWeeklyReview && (
             <button
               id="header-weekly-review-btn"
               onClick={onOpenWeeklyReview}
-              className="flex items-center space-x-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-200/80 transition-colors shadow-2xs"
+              className="hidden sm:flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-200/80 transition-colors shadow-2xs"
               title="Open Weekly Productivity Review & insights"
             >
               <CalendarDays className="w-4 h-4 text-indigo-600" />
-              <span className="hidden sm:inline">Weekly Review</span>
-              <span className="sm:hidden">Review</span>
+              <span className="hidden md:inline">Weekly Review</span>
+              <span className="md:hidden">Review</span>
             </button>
           )}
 
-          {/* AI Productivity Coach Button */}
+          {/* AI Productivity Coach Button (Desktop / Tablet) */}
           {onOpenAICoach && (
             <button
               id="header-ai-coach-btn"
               onClick={onOpenAICoach}
-              className="flex items-center space-x-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-indigo-950 border border-purple-200/90 transition-all shadow-2xs cursor-pointer"
+              className="hidden sm:flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-indigo-950 border border-purple-200/90 transition-all shadow-2xs cursor-pointer"
               title="Open AI Productivity Coach (Weekly analysis, strongest performance period & recommendations)"
             >
               <Brain className="w-4 h-4 text-purple-600" />
-              <span className="hidden sm:inline">AI Coach</span>
-              <span className="sm:hidden">AI</span>
+              <span className="hidden md:inline">AI Coach</span>
+              <span className="md:hidden">AI</span>
             </button>
           )}
 
-          {/* Focus Mode Button */}
+          {/* Focus Mode Button (All Viewports) */}
           {onOpenFocusMode && (
             <button
               id="focus-mode-nav-btn"
               onClick={onOpenFocusMode}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs ${
+              className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs ${
                 isFocusActive
                   ? 'bg-stone-900 text-emerald-400 border border-emerald-500/50 ring-2 ring-emerald-500/20'
                   : 'bg-stone-900 hover:bg-stone-800 text-white'
@@ -281,7 +269,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {isFocusActive && focusTimeRemaining ? `Focus: ${focusTimeRemaining}` : 'Focus'}
               </span>
               <span className="sm:hidden">
-                {isFocusActive && focusTimeRemaining ? focusTimeRemaining : 'Timer'}
+                {isFocusActive && focusTimeRemaining ? focusTimeRemaining : 'Focus'}
               </span>
               {isFocusActive && (
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -289,27 +277,27 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Spaced Revision System Button */}
+          {/* Spaced Revision System Button (Desktop / Tablet) */}
           {onOpenRevisionModal && (
             <button
               id="spaced-revision-nav-btn"
               onClick={onOpenRevisionModal}
-              className="flex items-center space-x-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 transition-colors shadow-2xs"
+              className="hidden md:flex items-center space-x-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 transition-colors shadow-2xs"
               title="Open Spaced Revision System (Day 0, 1, 3, 7, 14, 30)"
             >
               <span className="text-base">🧠</span>
-              <span className="hidden sm:inline">Revisions</span>
+              <span className="hidden lg:inline">Revisions</span>
               <span className="px-1.5 py-0.2 rounded-full text-xs font-bold bg-purple-200 text-purple-900">
                 {revisionsDueCount !== undefined ? revisionsDueCount : 12}
               </span>
             </button>
           )}
 
-          {/* Habits Manager Button */}
+          {/* Habits Manager Button (Desktop) */}
           <button
             id="manage-habits-btn"
             onClick={onOpenHabitManager}
-            className="hidden lg:flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-stone-100 hover:bg-stone-200 text-stone-800 transition-colors"
+            className="hidden xl:flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-stone-100 hover:bg-stone-200 text-stone-800 transition-colors"
           >
             <ListPlus className="w-4 h-4 text-emerald-600" />
             <span>Habits</span>
@@ -326,7 +314,7 @@ export const Header: React.FC<HeaderProps> = ({
                 aria-haspopup="true"
                 aria-expanded={isProfileOpen}
                 title={displayName}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm flex items-center justify-center shadow-xs ring-1 ring-stone-900/10 hover:ring-2 hover:ring-emerald-500/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:ring-offset-2 transition-all cursor-pointer select-none flex-shrink-0"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-xs ring-1 ring-stone-900/10 hover:ring-2 hover:ring-emerald-500/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:ring-offset-2 transition-all cursor-pointer select-none flex-shrink-0"
               >
                 {initials}
               </button>
@@ -337,7 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="user-profile-popover"
                   role="dialog"
                   aria-label="User Profile Details"
-                  className="absolute right-0 mt-2 w-64 bg-white border border-stone-200 shadow-xl rounded-2xl p-3.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-24px)] bg-white border border-stone-200 shadow-xl rounded-2xl p-3.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                 >
                   {/* Top Header with Avatar, Name, Email */}
                   <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
@@ -374,6 +362,91 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Mobile Sub-Navigation Action Strip (Only visible on < md screens) */}
+      <div className="md:hidden border-t border-stone-100 bg-stone-50/90 px-3 py-2 overflow-x-auto scrollbar-none flex items-center gap-1.5 text-xs font-semibold">
+        {onSelectTab && (
+          <>
+            <button
+              id="mobile-subnav-schedule"
+              onClick={() => onSelectTab('schedule')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                activeTab === 'schedule'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+              }`}
+            >
+              <ListTodo className="w-3.5 h-3.5" />
+              <span>Schedule</span>
+            </button>
+            <button
+              id="mobile-subnav-analytics"
+              onClick={() => onSelectTab('analytics')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                activeTab === 'analytics'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Analytics ({productivityScore}%)</span>
+            </button>
+          </>
+        )}
+
+        <button
+          id="mobile-subnav-today"
+          onClick={onGoToToday}
+          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 whitespace-nowrap hover:bg-stone-100"
+        >
+          <CalendarIcon className="w-3.5 h-3.5 text-stone-500" />
+          <span>Today</span>
+        </button>
+
+        {onOpenWeeklyReview && (
+          <button
+            id="mobile-subnav-weekly-review"
+            onClick={onOpenWeeklyReview}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-950 whitespace-nowrap hover:bg-indigo-100"
+          >
+            <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Weekly Review</span>
+          </button>
+        )}
+
+        {onOpenAICoach && (
+          <button
+            id="mobile-subnav-ai-coach"
+            onClick={onOpenAICoach}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-950 whitespace-nowrap hover:bg-purple-100"
+          >
+            <Brain className="w-3.5 h-3.5 text-purple-600" />
+            <span>AI Coach</span>
+          </button>
+        )}
+
+        {onOpenRevisionModal && (
+          <button
+            id="mobile-subnav-revisions"
+            onClick={onOpenRevisionModal}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 whitespace-nowrap hover:bg-purple-100"
+          >
+            <span>🧠 Revisions</span>
+            <span className="px-1 py-0.2 rounded-full text-[10px] font-bold bg-purple-200 text-purple-900">
+              {revisionsDueCount !== undefined ? revisionsDueCount : 12}
+            </span>
+          </button>
+        )}
+
+        <button
+          id="mobile-subnav-habits"
+          onClick={onOpenHabitManager}
+          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 whitespace-nowrap hover:bg-stone-100"
+        >
+          <ListPlus className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Habits</span>
+        </button>
       </div>
     </header>
   );

@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import type { Habit, HabitCompletion, Task, FocusSession } from '../../src/types.ts';
+import type { Habit, HabitCompletion, TaskCompletion, Task, FocusSession } from '../../src/types.ts';
 import { isMongoConnected } from './mongoService.ts';
 import {
   HabitModel,
   TaskModel,
   HabitCompletionModel,
+  TaskCompletionModel,
   FocusSessionModel,
 } from '../models/HabitData.ts';
 
@@ -22,6 +23,7 @@ interface DatabaseSchema {
   tasks: Task[];
   habits: Habit[];
   habitCompletions: HabitCompletion[];
+  taskCompletions?: TaskCompletion[];
   focusSessions?: (FocusSession & { userId?: string })[];
   dailyPriorities?: Record<string, string[]>;
   users?: DbUserAuth[];
@@ -43,12 +45,37 @@ const DATA_DIR = process.env.VERCEL
 const DB_FILE = path.join(DATA_DIR, 'database.json');
 const LOCK_FILE = path.join(DATA_DIR, 'cron_execution.lock');
 
+export function getTodayISTStr(): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(new Date());
+    let y = '', m = '', d = '';
+    for (const p of parts) {
+      if (p.type === 'year') y = p.value;
+      if (p.type === 'month') m = p.value;
+      if (p.type === 'day') d = p.value;
+    }
+    if (y && m && d) return `${y}-${m}-${d}`;
+  } catch {}
+  // UTC+05:30 fallback
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const istDate = new Date(utc + (330 * 60000));
+  return istDate.toISOString().split('T')[0];
+}
+
 // Default initial state
 function getDefaultData(): DatabaseSchema {
   return {
     habits: [],
     tasks: [],
     habitCompletions: [],
+    taskCompletions: [],
     focusSessions: [],
     dailyPriorities: {},
   };
@@ -227,10 +254,11 @@ export class DbService {
       tasks?: Task[];
       habits?: Habit[];
       habitCompletions?: HabitCompletion[];
+      taskCompletions?: TaskCompletion[];
       dailyPriorities?: Record<string, string[]>;
     },
     userId?: string
-  ): { tasksCount: number; habitsCount: number; completionsCount: number; changed: boolean } {
+  ): { tasksCount: number; habitsCount: number; completionsCount: number; taskCompletionsCount: number; changed: boolean } {
     this.reloadIfDiskExists();
     let isDirty = false;
 
@@ -285,6 +313,7 @@ export class DbService {
 
     // 3. Sync habit completions (non-destructive merge)
     if (Array.isArray(payload.habitCompletions)) {
+      const todayIST = getTodayISTStr();
       const scopedIncoming = userId
         ? payload.habitCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
         : payload.habitCompletions;
@@ -293,10 +322,11 @@ export class DbService {
 
       const compMap = new Map<string, HabitCompletion>();
       for (const c of existingUserComps) {
-        if (c && c.habitId && c.date) compMap.set(`${c.habitId}_${c.date}`, c);
+        if (c && c.habitId && c.date && (!c.completed || c.date <= todayIST)) compMap.set(`${c.habitId}_${c.date}`, c);
       }
       for (const c of scopedIncoming) {
         if (!c || !c.habitId || !c.date) continue;
+        if (c.completed && c.date > todayIST) continue; // Reject future completions
         const key = `${c.habitId}_${c.date}`;
         compMap.set(key, c);
       }
@@ -307,7 +337,34 @@ export class DbService {
       }
     }
 
-    // 4. Sync daily priorities
+    // 4. Sync task completions (date-specific occurrence records)
+    if (Array.isArray(payload.taskCompletions)) {
+      const todayIST = getTodayISTStr();
+      const existingAllTaskComps = this.data.taskCompletions || [];
+      const scopedIncoming = userId
+        ? payload.taskCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+        : payload.taskCompletions;
+      const otherUserComps = userId ? existingAllTaskComps.filter((c) => c.userId && c.userId !== userId) : [];
+      const existingUserComps = userId ? existingAllTaskComps.filter((c) => c.userId === userId) : existingAllTaskComps;
+
+      const compMap = new Map<string, TaskCompletion>();
+      for (const c of existingUserComps) {
+        if (c && c.taskId && c.date && (!c.completed || c.date <= todayIST)) compMap.set(`${c.taskId}_${c.date}`, c);
+      }
+      for (const c of scopedIncoming) {
+        if (!c || !c.taskId || !c.date) continue;
+        if (c.completed && c.date > todayIST) continue; // Reject future completions
+        const key = `${c.taskId}_${c.date}`;
+        compMap.set(key, c);
+      }
+      const newTaskComps = [...otherUserComps, ...Array.from(compMap.values())];
+      if (JSON.stringify(newTaskComps) !== JSON.stringify(this.data.taskCompletions)) {
+        this.data.taskCompletions = newTaskComps;
+        isDirty = true;
+      }
+    }
+
+    // 5. Sync daily priorities
     if (payload.dailyPriorities && typeof payload.dailyPriorities === 'object') {
       if (JSON.stringify(payload.dailyPriorities) !== JSON.stringify(this.data.dailyPriorities)) {
         this.data.dailyPriorities = payload.dailyPriorities;
@@ -355,6 +412,17 @@ export class DbService {
             }));
             (HabitCompletionModel as any).bulkWrite(compOps).catch(() => {});
           }
+          const userTaskComps = (this.data.taskCompletions || []).filter((c) => c.userId === userId);
+          if (userTaskComps.length > 0) {
+            const taskCompOps = userTaskComps.map((comp) => ({
+              updateOne: {
+                filter: { taskId: comp.taskId, date: comp.date, userId },
+                update: { $set: comp },
+                upsert: true,
+              },
+            }));
+            (TaskCompletionModel as any).bulkWrite(taskCompOps).catch(() => {});
+          }
         } catch {
           // Non-blocking
         }
@@ -365,6 +433,7 @@ export class DbService {
       tasksCount: this.data.tasks.filter((t) => !userId || t.userId === userId).length,
       habitsCount: this.data.habits.filter((h) => !userId || h.userId === userId).length,
       completionsCount: this.data.habitCompletions.filter((c) => !userId || c.userId === userId).length,
+      taskCompletionsCount: (this.data.taskCompletions || []).filter((c) => !userId || c.userId === userId).length,
       changed: isDirty,
     };
   }
@@ -485,6 +554,7 @@ export class DbService {
   public syncHabitCompletions(clientCompletions: HabitCompletion[], userId?: string): void {
     if (!Array.isArray(clientCompletions)) return;
     this.reloadIfDiskExists();
+    const todayIST = getTodayISTStr();
     const scopedIncoming = userId
       ? clientCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
       : clientCompletions;
@@ -494,6 +564,7 @@ export class DbService {
     const compMap = new Map<string, HabitCompletion>();
     for (const c of scopedIncoming) {
       if (!c || !c.habitId || !c.date) continue;
+      if (c.completed && c.date > todayIST) continue; // Reject future completions
       const key = `${c.habitId}_${c.date}`;
       compMap.set(key, c);
     }
@@ -505,7 +576,7 @@ export class DbService {
     this.persistData();
 
     if (isMongoConnected() && userId) {
-      const compKeys = scopedIncoming.map((c) => `${c.habitId}_${c.date}`);
+      const compKeys = Array.from(compMap.values()).map((c) => `${c.habitId}_${c.date}`);
       HabitCompletionModel.find({ userId }).lean().then((existing: any[]) => {
         const toDelete = existing
           .filter((c) => !compKeys.includes(`${c.habitId}_${c.date}`))
@@ -515,8 +586,9 @@ export class DbService {
         }
       }).catch(() => {});
 
-      if (scopedIncoming.length > 0) {
-        const ops = scopedIncoming.map((comp) => ({
+      const validOps = Array.from(compMap.values());
+      if (validOps.length > 0) {
+        const ops = validOps.map((comp) => ({
           updateOne: {
             filter: { habitId: comp.habitId, date: comp.date, userId },
             update: { $set: comp },
@@ -525,6 +597,68 @@ export class DbService {
         }));
         (HabitCompletionModel as any).bulkWrite(ops).catch((err: any) =>
           console.warn('[DbService] MongoDB completions sync notice:', err?.message)
+        );
+      }
+    }
+  }
+
+  // --- TASK COMPLETIONS (Date-Specific Occurrence Records) ---
+  public getTaskCompletions(userId?: string): TaskCompletion[] {
+    this.reloadIfDiskExists();
+    const all = this.data.taskCompletions || [];
+    if (userId) {
+      return all.filter((c) => c.userId === userId);
+    }
+    return all;
+  }
+
+  public syncTaskCompletions(clientCompletions: TaskCompletion[], userId?: string): void {
+    if (!Array.isArray(clientCompletions)) return;
+    this.reloadIfDiskExists();
+    const todayIST = getTodayISTStr();
+    const existingAll = this.data.taskCompletions || [];
+    const scopedIncoming = userId
+      ? clientCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+      : clientCompletions;
+    const otherUserComps = userId ? existingAll.filter((c) => c.userId && c.userId !== userId) : [];
+
+    // Deduplicate by taskId + date: guarantee exactly 1 completion record per task per day
+    const compMap = new Map<string, TaskCompletion>();
+    for (const c of scopedIncoming) {
+      if (!c || !c.taskId || !c.date) continue;
+      if (c.completed && c.date > todayIST) continue; // Reject future completions
+      const key = `${c.taskId}_${c.date}`;
+      compMap.set(key, c);
+    }
+    const newComps = [...otherUserComps, ...Array.from(compMap.values())];
+    if (JSON.stringify(newComps) === JSON.stringify(this.data.taskCompletions)) {
+      return; // No changes, skip disk write completely
+    }
+    this.data.taskCompletions = newComps;
+    this.persistData();
+
+    if (isMongoConnected() && userId) {
+      const compKeys = Array.from(compMap.values()).map((c) => `${c.taskId}_${c.date}`);
+      TaskCompletionModel.find({ userId }).lean().then((existing: any[]) => {
+        const toDelete = existing
+          .filter((c) => !compKeys.includes(`${c.taskId}_${c.date}`))
+          .map((c) => c._id);
+        if (toDelete.length > 0) {
+          TaskCompletionModel.deleteMany({ userId, _id: { $in: toDelete } }).catch(() => {});
+        }
+      }).catch(() => {});
+
+      const validOps = Array.from(compMap.values());
+      if (validOps.length > 0) {
+        const ops = validOps.map((comp) => ({
+          updateOne: {
+            filter: { taskId: comp.taskId, date: comp.date, userId },
+            update: { $set: comp },
+            upsert: true,
+          },
+        }));
+        (TaskCompletionModel as any).bulkWrite(ops).catch((err: any) =>
+          console.warn('[DbService] MongoDB task completions sync notice:', err?.message)
         );
       }
     }
@@ -610,10 +744,12 @@ export class DbService {
         const mongoHabits = await HabitModel.find().lean();
         const mongoTasks = await TaskModel.find().lean();
         const mongoCompletions = await HabitCompletionModel.find().lean();
+        const mongoTaskCompletions = await TaskCompletionModel.find().lean();
 
         this.data.habits = mongoHabits as any[];
         this.data.tasks = mongoTasks as any[];
         this.data.habitCompletions = mongoCompletions as any[];
+        this.data.taskCompletions = mongoTaskCompletions as any[];
         this.persistData();
       }
     } catch (err: any) {

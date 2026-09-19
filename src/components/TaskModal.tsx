@@ -174,15 +174,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/50 backdrop-blur-xs">
       <div
         id="task-modal-content"
-        className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto"
+        className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-stone-100">
           <div>
-            <h3 className="text-lg font-bold text-stone-900">
+            <h3 className="text-base sm:text-lg font-bold text-stone-900">
               {initialTask ? 'Edit Task Schedule' : 'New Scheduled Task'}
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
@@ -278,15 +278,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </label>
                 <span className="text-[11px] text-stone-500">Passing this marks task overdue</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <input
                   id="task-duetime-input"
                   type="time"
                   value={dueTime}
                   onChange={(e) => handleDueTimeChange(e.target.value)}
-                  className="px-3 py-1.5 bg-white rounded-lg border border-stone-300 text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                  className="px-3 py-1.5 bg-white rounded-lg border border-stone-300 text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900 w-full sm:w-auto"
                 />
-                <div className="flex items-center space-x-1 flex-wrap gap-y-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {TIME_PRESETS.map((preset) => (
                     <button
                       key={preset.value}
