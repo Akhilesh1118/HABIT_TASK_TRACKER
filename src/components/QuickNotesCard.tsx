@@ -9,6 +9,9 @@ interface QuickNotesCardProps {
   todayDate: string;
 }
 
+// Debounce delay: Wait 60 seconds after user finishes typing before persisting to localStorage
+const DEBOUNCE_DELAY_MS = 60000;
+
 export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   selectedDate,
   todayDate,
@@ -84,14 +87,14 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     latestNotesRef.current = val;
     setNotesSaveStatus('editing');
 
-    // Clear existing timer and wait 30 seconds after user finishes typing thoughts
+    // Clear existing timer and wait 60 seconds after user finishes typing thoughts
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
 
     saveTimerRef.current = setTimeout(() => {
       flushSave(val);
-    }, 30000);
+    }, DEBOUNCE_DELAY_MS);
   };
 
   const handleInsertSnippet = (snippet: string) => {
@@ -150,7 +153,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
           {notesSaveStatus === 'editing' && (
             <span className="inline-flex items-center space-x-1.5 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>Autosaves in 30s</span>
+              <span>Autosaves after 60s pause</span>
               <button
                 type="button"
                 onClick={() => flushSave()}
