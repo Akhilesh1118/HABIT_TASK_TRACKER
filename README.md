@@ -51,11 +51,12 @@ A full-stack, personal daily productivity and habit tracking web application bui
    ```env
    PORT=3000
    MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_secure_jwt_secret_key_min_16_chars
+   JWT_SECRET=your_unique_jwt_secret_at_least_16_chars
    INITIAL_ADMIN_EMAIL=akhileshyadav.nf@gmail.com
-   INITIAL_ADMIN_PASSWORD=your_admin_password
+   INITIAL_ADMIN_PASSWORD=your_unique_admin_password_at_least_16_chars
    GEMINI_API_KEY=your_gemini_api_key_optional
    ```
+   `JWT_SECRET` and `INITIAL_ADMIN_PASSWORD` must each be at least 16 characters in production. Do not deploy example or shared credentials.
 
 4. **Run the Development Server**:
    ```bash

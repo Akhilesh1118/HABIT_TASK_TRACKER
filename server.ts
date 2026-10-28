@@ -13,7 +13,7 @@ import { taskRouter } from './server/routes/taskRoutes.ts';
 import { habitRouter } from './server/routes/habitRoutes.ts';
 import { syncRouter } from './server/routes/syncRoutes.ts';
 import { focusRouter } from './server/routes/focusRoutes.ts';
-import { requireAuth } from './server/middleware/authMiddleware.ts';
+import { requireAdmin, requireAuth } from './server/middleware/authMiddleware.ts';
 import { getCurrentIST } from './src/utils/timeUtils.ts';
 import diagnosticsHandler from './api/diagnostics.ts';
 import dbDiagnosticsHandler from './api/diagnostics/db.ts';
@@ -40,7 +40,7 @@ async function startServer() {
 
   const app = express();
   const httpServer = http.createServer(app);
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Security Headers Middleware (Point 7: API security & hardening)
   app.use((_req, res, next) => {
@@ -89,19 +89,19 @@ async function startServer() {
   });
 
   // Diagnostic runtime filesystem & import checks
-  app.all('/api/diagnostics/sync', (req: Request, res: Response) => {
+  app.all('/api/diagnostics/sync', requireAdmin, (req: Request, res: Response) => {
     syncDiagnosticsHandler(req, res);
   });
 
-  app.all('/api/diagnostics/auth', (req: Request, res: Response) => {
+  app.all('/api/diagnostics/auth', requireAdmin, (req: Request, res: Response) => {
     authDiagnosticsHandler(req, res);
   });
 
-  app.all('/api/diagnostics/db', (req: Request, res: Response) => {
+  app.all('/api/diagnostics/db', requireAdmin, (req: Request, res: Response) => {
     dbDiagnosticsHandler(req, res);
   });
 
-  app.all('/api/diagnostics', (req: Request, res: Response) => {
+  app.all('/api/diagnostics', requireAdmin, (req: Request, res: Response) => {
     diagnosticsHandler(req, res);
   });
 

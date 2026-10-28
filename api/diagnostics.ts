@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { authorizeAdminRequest } from '../server/middleware/authMiddleware.ts';
 
 interface FileNode {
   name: string;
@@ -73,6 +74,8 @@ function listDirectoryRecursive(dirPath: string, maxDepth = 3, currentDepth = 0)
 }
 
 export default async function handler(req: Request, res: Response) {
+  if (!authorizeAdminRequest(req, res)) return;
+
   const cwd = process.cwd();
 
   // List of critical imports expected across Vercel serverless functions

@@ -1,10 +1,20 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { dbService } from '../server/services/dbService.ts';
+import { dbService, getTodayISTStr } from '../server/services/dbService.ts';
 import { connectToDatabase, isMongoConnected } from '../server/services/mongoService.ts';
-import { TaskModel, HabitModel, HabitCompletionModel, FocusSessionModel } from '../server/models/HabitData.ts';
+import {
+  TaskModel,
+  HabitModel,
+  HabitCompletionModel,
+  TaskCompletionModel,
+  FocusSessionModel,
+  UserCategoryModel,
+} from '../server/models/HabitData.ts';
 import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
-import type { Task, Habit, HabitCompletion, FocusSession } from '../src/types.ts';
+import { UserModel } from '../server/models/User.ts';
+import { validateSyncCompletionDates, validateTaskCompletionSync } from '../server/utils/dateValidation.ts';
+import { isValidDailyPriorities } from '../server/utils/dailyPriorities.ts';
+import type { Task, Habit, HabitCompletion, TaskCompletion, FocusSession, CategoryItem } from '../src/types.ts';
 
 // Helper to safely and robustly parse request body across Vercel serverless and Express environments
 async function parseRequestBody(req: any): Promise<{ parsed: any; error?: string }> {
@@ -86,8 +96,10 @@ export default async function handler(req: Request, res: Response) {
       let tasks: Task[] = [];
       let habits: Habit[] = [];
       let habitCompletions: HabitCompletion[] = [];
+      let taskCompletions: TaskCompletion[] = [];
       let focusSessions: FocusSession[] = [];
       let dailyPriorities: Record<string, string[]> = {};
+      let categories: CategoryItem[] = [];
 
       if (isMongoConnected()) {
         try {
@@ -102,11 +114,13 @@ export default async function handler(req: Request, res: Response) {
               }
             : { userId };
 
-          const [mTasks, mHabits, mCompletions, mFocus] = await Promise.all([
+          const [mTasks, mHabits, mCompletions, mTaskCompletions, mFocus, mCategories] = await Promise.all([
             TaskModel.find(userFilter).sort({ createdAt: -1 }).lean(),
             HabitModel.find(userFilter).sort({ createdAt: 1 }).lean(),
             HabitCompletionModel.find(userFilter).lean(),
+            TaskCompletionModel.find(userFilter).lean(),
             FocusSessionModel.find(userFilter).sort({ startedAt: -1 }).lean(),
+            UserCategoryModel.find({ userId }).sort({ createdAt: 1 }).lean(),
           ]);
 
           tasks = (mTasks as any[]).map((t) => ({
@@ -118,7 +132,47 @@ export default async function handler(req: Request, res: Response) {
           }));
           habits = mHabits as any[];
           habitCompletions = mCompletions as any[];
+          taskCompletions = mTaskCompletions as any[];
           focusSessions = mFocus as any[];
+          if (mCategories.length > 0) {
+            categories = mCategories.map((category) => ({
+              id: category.id,
+              name: category.name,
+              icon: category.icon || '🏷️',
+              color: category.color || '#7c3aed',
+              isDefault: Boolean(category.isDefault),
+            }));
+          } else {
+            const entityCategories = new Set<string>();
+            tasks.forEach((task) => {
+              if (task.category?.trim()) entityCategories.add(task.category.trim());
+            });
+            habits.forEach((habit) => {
+              if (habit.category?.trim()) entityCategories.add(habit.category.trim());
+            });
+
+            const categoryMap = new Map<string, CategoryItem>();
+            categoryMap.set('personal learning', {
+              id: 'cat_personal_learning',
+              name: 'Personal Learning',
+              icon: '📖',
+              color: '#7c3aed',
+              isDefault: true,
+            });
+            entityCategories.forEach((name) => {
+              const normalizedName = name.toLowerCase().trim();
+              if (!categoryMap.has(normalizedName)) {
+                categoryMap.set(normalizedName, {
+                  id: `cat_${normalizedName.replace(/[^a-z0-9]/g, '_')}`,
+                  name,
+                  icon: '🏷️',
+                  color: '#6366f1',
+                  isDefault: false,
+                });
+              }
+            });
+            categories = Array.from(categoryMap.values());
+          }
 
           // If legacy records found for admin, migrate them to the current admin userId
           if (isAdmin) {
@@ -126,32 +180,66 @@ export default async function handler(req: Request, res: Response) {
               TaskModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
               HabitModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
               HabitCompletionModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
+              TaskCompletionModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
               FocusSessionModel.updateMany({ userId: { $in: [null, '', 'default_user', 'usr_admin', '6aaa82ad324e4764b161c6dd'] } }, { $set: { userId } }),
             ]);
+          }
+
+          if (categories.length > 0) {
+            const categoryOps = categories.map((category) => ({
+              updateOne: {
+                filter: { userId, name: category.name },
+                update: {
+                  $setOnInsert: { id: category.id },
+                  $set: {
+                    icon: category.icon,
+                    color: category.color,
+                    isDefault: category.isDefault,
+                  },
+                },
+                upsert: true,
+              },
+            }));
+            await UserCategoryModel.bulkWrite(categoryOps).catch((err: any) => {
+              console.warn('[Vercel Sync API] MongoDB category initialization warning:', err?.message);
+            });
+            dbService.saveCategories(userId, categories);
           }
         } catch (err: any) {
           console.warn('[Vercel Sync API] MongoDB query warning, fallback to local store:', err?.message);
           tasks = dbService.getTasks(userId);
           habits = dbService.getHabits(userId);
           habitCompletions = dbService.getHabitCompletions(userId);
+          taskCompletions = dbService.getTaskCompletions(userId);
           focusSessions = dbService.getFocusSessions(userId);
+          categories = dbService.getCategories(userId);
         }
       } else {
         tasks = dbService.getTasks(userId);
         habits = dbService.getHabits(userId);
         habitCompletions = dbService.getHabitCompletions(userId);
+        taskCompletions = dbService.getTaskCompletions(userId);
         focusSessions = dbService.getFocusSessions(userId);
+        categories = dbService.getCategories(userId);
       }
 
-      dailyPriorities = dbService.getDailyPriorities();
+      if (isMongoConnected()) {
+        const priorityOwner = await UserModel.findById(userId).select('dailyPriorities').lean() as any;
+        dailyPriorities = priorityOwner?.dailyPriorities || dbService.getUserDailyPriorities(userId);
+      } else if (!process.env.VERCEL) {
+        dailyPriorities = dbService.getUserDailyPriorities(userId);
+      }
 
       return res.status(200).json({
         success: true,
         tasks,
         habits,
         habitCompletions,
+        taskCompletions,
         focusSessions,
-        dailyPriorities,
+        ...(isMongoConnected() || !process.env.VERCEL ? { dailyPriorities } : {}),
+        dailyPrioritiesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
+        categories,
         source: isMongoConnected() ? 'mongodb_atlas' : 'local_fallback',
       });
     } catch (err: any) {
@@ -181,20 +269,22 @@ export default async function handler(req: Request, res: Response) {
 
       return res.status(400).json({
         success: false,
-        error: 'Invalid or missing sync payload. Expected JSON object with tasks, habits, habitCompletions, or focusSessions.',
+        error: 'Invalid or missing sync payload. Expected JSON object with tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, or categories.',
       });
     }
 
-    const { tasks, habits, habitCompletions, focusSessions, dailyPriorities } = body;
+    const { tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories } = body;
 
     const hasTasks = Array.isArray(tasks);
     const hasHabits = Array.isArray(habits);
     const hasCompletions = Array.isArray(habitCompletions);
+    const hasTaskCompletions = Array.isArray(taskCompletions);
     const hasFocus = Array.isArray(focusSessions);
     const hasPriorities = dailyPriorities !== undefined && typeof dailyPriorities === 'object' && !Array.isArray(dailyPriorities);
+    const hasCategories = Array.isArray(categories);
 
     // Protect against payloads that have no recognizable sync fields
-    if (!hasTasks && !hasHabits && !hasCompletions && !hasFocus && !hasPriorities) {
+    if (!hasTasks && !hasHabits && !hasCompletions && !hasTaskCompletions && !hasFocus && !hasPriorities && !hasCategories) {
       const safeUserId = userId ? `${userId.slice(0, 8)}...` : 'unknown';
       console.warn('[Sync API POST Validation Failed: No recognized sync fields]', {
         method: req.method,
@@ -205,25 +295,47 @@ export default async function handler(req: Request, res: Response) {
 
       return res.status(400).json({
         success: false,
-        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, focusSessions, dailyPriorities) must be provided.',
+        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories) must be provided.',
       });
+    }
+    if (hasPriorities && !isValidDailyPriorities(dailyPriorities)) {
+      return res.status(400).json({ success: false, error: 'Daily priorities must map valid YYYY-MM-DD dates to arrays of up to three task IDs.' });
+    }
+
+    const todayIST = getTodayISTStr();
+    const existingTasksForValidation = isMongoConnected()
+      ? await TaskModel.find({ userId }).select('id date scheduledDate completed status completedAt').lean() as any[]
+      : dbService.getTasks(userId);
+    const existingHabitCompletions = isMongoConnected()
+      ? await HabitCompletionModel.find({ userId }).select('habitId date completed').lean() as any[]
+      : dbService.getHabitCompletions(userId);
+    const existingTaskCompletions = isMongoConnected()
+      ? await TaskCompletionModel.find({ userId }).select('taskId date completed completedAt').lean() as any[]
+      : dbService.getTaskCompletions(userId);
+    if (!validateTaskCompletionSync(hasTasks ? tasks : undefined, existingTasksForValidation, todayIST) ||
+        !validateSyncCompletionDates(hasCompletions ? habitCompletions : undefined, existingHabitCompletions, (c: HabitCompletion) => `${c.habitId}_${c.date}`, todayIST) ||
+        !validateSyncCompletionDates(hasTaskCompletions ? taskCompletions : undefined, existingTaskCompletions, (c: TaskCompletion) => `${c.taskId}_${c.date}`, todayIST)) {
+      return res.status(400).json({ success: false, error: 'Sync cannot add or change completion records outside today.' });
     }
 
     if (isMongoConnected()) {
       try {
+        const todayIST = getTodayISTStr();
+
         // Tasks - Non-destructive upsert of incoming tasks
         if (hasTasks && tasks.length > 0) {
           const taskOps = tasks.map((task: Task) => {
-            const scheduledDate = task.scheduledDate || task.date || task.dueDate || (task.createdAt ? String(task.createdAt).split('T')[0] : '');
-            const isCompleted = Boolean(task.completed || task.status === 'completed');
+            const { _id, __v, ...cleanTask } = task as Task & { _id?: unknown; __v?: unknown };
+            const scheduledDate = cleanTask.scheduledDate || cleanTask.date || cleanTask.dueDate || (cleanTask.createdAt ? String(cleanTask.createdAt).split('T')[0] : '');
+            const isCompleted = Boolean(cleanTask.completed || cleanTask.status === 'completed');
             const status = task.status || (isCompleted ? 'completed' : 'pending');
-            const completedAt = isCompleted ? (task.completedAt || new Date().toISOString()) : null;
+            const completedAt = isCompleted ? (cleanTask.completedAt || new Date().toISOString()) : null;
             return {
               updateOne: {
-                filter: { id: task.id, userId },
+                filter: { id: cleanTask.id, userId },
                 update: {
                   $set: {
-                    ...task,
+                    ...cleanTask,
                     scheduledDate,
                     date: scheduledDate,
                     status,
@@ -241,38 +353,96 @@ export default async function handler(req: Request, res: Response) {
 
         // Habits - Non-destructive upsert of incoming habits
         if (hasHabits && habits.length > 0) {
-          const habitOps = habits.map((habit: Habit) => ({
-            updateOne: {
-              filter: { id: habit.id, userId },
-              update: { $set: { ...habit, userId } },
-              upsert: true,
-            },
-          }));
+          const habitOps = habits.map((habit: Habit) => {
+            const { _id, __v, ...cleanHabit } = habit as Habit & { _id?: unknown; __v?: unknown };
+            return {
+              updateOne: {
+                filter: { id: cleanHabit.id, userId },
+                update: { $set: { ...cleanHabit, userId } },
+                upsert: true,
+              },
+            };
+          });
           await (HabitModel as any).bulkWrite(habitOps);
         }
 
         // Habit Completions - Non-destructive upsert of incoming habit completions
         if (hasCompletions && habitCompletions.length > 0) {
-          const compOps = habitCompletions.map((comp: HabitCompletion) => ({
-            updateOne: {
-              filter: { habitId: comp.habitId, date: comp.date, userId },
-              update: { $set: { ...comp, userId } },
-              upsert: true,
-            },
-          }));
-          await (HabitCompletionModel as any).bulkWrite(compOps);
+          const validCompletions = habitCompletions.filter((comp: HabitCompletion) => !comp.completed || comp.date <= todayIST);
+          if (validCompletions.length > 0) {
+            const compOps = validCompletions.map((comp: HabitCompletion) => {
+              const { _id, __v, ...cleanCompletion } = comp as HabitCompletion & { _id?: unknown; __v?: unknown };
+              return {
+                updateOne: {
+                  filter: { habitId: cleanCompletion.habitId, date: cleanCompletion.date, userId },
+                  update: { $set: { ...cleanCompletion, userId } },
+                  upsert: true,
+                },
+              };
+            });
+            await (HabitCompletionModel as any).bulkWrite(compOps);
+          }
+        }
+
+        if (hasTaskCompletions && taskCompletions.length > 0) {
+          const validCompletions = taskCompletions.filter((comp: TaskCompletion) => !comp.completed || comp.date <= todayIST);
+          if (validCompletions.length > 0) {
+            const compOps = validCompletions.map((comp: TaskCompletion) => {
+              const { _id, __v, ...cleanCompletion } = comp as TaskCompletion & { _id?: unknown; __v?: unknown };
+              return {
+                updateOne: {
+                  filter: { taskId: cleanCompletion.taskId, date: cleanCompletion.date, userId },
+                  update: { $set: { ...cleanCompletion, userId } },
+                  upsert: true,
+                },
+              };
+            });
+            await (TaskCompletionModel as any).bulkWrite(compOps);
+          }
         }
 
         // Focus Sessions - Non-destructive upsert of incoming focus sessions
         if (hasFocus && focusSessions.length > 0) {
-          const focusOps = focusSessions.map((session: FocusSession) => ({
-            updateOne: {
-              filter: { id: session.id, userId },
-              update: { $set: { ...session, userId } },
-              upsert: true,
+          const validSessions = focusSessions.filter((session: FocusSession) => !session.date || session.date <= todayIST);
+          if (validSessions.length > 0) {
+            const focusOps = validSessions.map((session: FocusSession) => {
+              const { _id, __v, ...cleanSession } = session as FocusSession & { _id?: unknown; __v?: unknown };
+              return {
+                updateOne: {
+                  filter: { id: cleanSession.id, userId },
+                  update: { $set: { ...cleanSession, userId } },
+                  upsert: true,
+                },
+              };
+            });
+            await (FocusSessionModel as any).bulkWrite(focusOps);
+          }
+        }
+
+        if (hasCategories) {
+          await UserCategoryModel.deleteMany({ userId });
+          if (categories.length > 0) {
+            await UserCategoryModel.insertMany(
+              categories.map((category: CategoryItem) => ({
+                id: category.id,
+                userId,
+                name: category.name,
+                icon: category.icon || '🏷️',
+                color: category.color || '#7c3aed',
+                isDefault: Boolean(category.isDefault),
+              }))
+            );
+          }
+        }
+
+        if (hasPriorities) {
+          await UserModel.updateOne({ _id: userId }, [{
+            $set: {
+              dailyPriorities: {
+                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, dailyPriorities],
+              },
             },
-          }));
-          await (FocusSessionModel as any).bulkWrite(focusOps);
+          }]);
         }
       } catch (mongoErr: any) {
         console.warn('[Vercel Sync POST Warning] MongoDB sync:', mongoErr?.message);
@@ -283,8 +453,13 @@ export default async function handler(req: Request, res: Response) {
     if (hasTasks) syncPayload.tasks = tasks;
     if (hasHabits) syncPayload.habits = habits;
     if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
+    if (hasTaskCompletions) syncPayload.taskCompletions = taskCompletions;
     if (hasFocus) syncPayload.focusSessions = focusSessions;
-    if (hasPriorities) syncPayload.dailyPriorities = dailyPriorities;
+    const prioritiesPersisted = Boolean(isMongoConnected() || !process.env.VERCEL);
+    if (hasPriorities && prioritiesPersisted) syncPayload.dailyPriorities = dailyPriorities;
+
+    if (hasFocus) dbService.syncFocusSessions(focusSessions, userId);
+    if (hasCategories) dbService.saveCategories(userId, categories);
 
     const result = dbService.syncData(syncPayload, userId);
 
@@ -292,16 +467,19 @@ export default async function handler(req: Request, res: Response) {
       success: true,
       syncedAt: new Date().toISOString(),
       changed: result.changed,
+      dailyPrioritiesPersisted: prioritiesPersisted,
       counts: {
         tasks: result.tasksCount,
         habits: result.habitsCount,
         habitCompletions: result.completionsCount,
+        taskCompletions: result.taskCompletionsCount,
         focusSessions: Array.isArray(focusSessions) ? focusSessions.length : 0,
+        categories: hasCategories ? categories.length : undefined,
       },
+      categories: dbService.getCategories(userId),
     });
   } catch (err: any) {
     console.error('[Vercel Sync API POST Error]', err);
     return res.status(500).json({ error: err?.message || 'Failed to sync data' });
   }
 }
-

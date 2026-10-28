@@ -41,6 +41,23 @@ export function verifyRequestAuth(req: Request): AuthSessionUser | null {
   return authService.verifyToken(token);
 }
 
+export function isAdminUser(user: AuthSessionUser | null | undefined): boolean {
+  return user?.role === 'admin';
+}
+
+export function authorizeAdminRequest(req: Request, res: Response): boolean {
+  const user = verifyRequestAuth(req);
+  if (!user) {
+    res.status(401).json({ status: 'error', error: 'Unauthorized.' });
+    return false;
+  }
+  if (!isAdminUser(user)) {
+    res.status(403).json({ status: 'error', error: 'Administrator access required.' });
+    return false;
+  }
+  return true;
+}
+
 /**
  * Cookie options helper for consistent, secure HTTP-only cookies
  */
@@ -72,6 +89,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     });
   }
 
+  req.user = user;
+  next();
+}
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = verifyRequestAuth(req);
+  if (!user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  if (!isAdminUser(user)) {
+    return res.status(403).json({ success: false, error: 'Administrator access required.' });
+  }
   req.user = user;
   next();
 }

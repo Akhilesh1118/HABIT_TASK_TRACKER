@@ -3,6 +3,7 @@ import { dbService } from '../server/services/dbService.ts';
 import { connectToDatabase, isMongoConnected } from '../server/services/mongoService.ts';
 import { HabitModel, HabitCompletionModel } from '../server/models/HabitData.ts';
 import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
+import { isTodayDateKey } from '../server/utils/dateValidation.ts';
 import type { Habit, HabitCompletion } from '../src/types.ts';
 
 async function parseRequestBody(req: any): Promise<any> {
@@ -114,6 +115,10 @@ export default async function handler(req: Request, res: Response) {
 
       const completionId = `hc_${habitId}_${date}`;
       const newStatus = completed !== undefined ? Boolean(completed) : true;
+
+      if (!isTodayDateKey(date)) {
+        return res.status(400).json({ success: false, error: 'Habit completion can only be changed for today using a valid YYYY-MM-DD date.' });
+      }
 
       if (isMongoConnected()) {
         try {

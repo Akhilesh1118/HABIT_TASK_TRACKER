@@ -35,6 +35,9 @@ class AuthService {
     if (secret && secret.trim().length >= 16) {
       return secret.trim();
     }
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      throw new Error('JWT_SECRET must be configured with at least 16 characters in production.');
+    }
     return 'habit_tracker_secure_multi_user_jwt_secret_2026_x89f2a';
   }
 
@@ -88,23 +91,25 @@ class AuthService {
 
   public async ensureAdminAccount(): Promise<{ email: string } | null> {
     const email = (process.env.INITIAL_ADMIN_EMAIL || 'aky9842@gmail.com').toLowerCase().trim();
-    const rawPassword = process.env.INITIAL_ADMIN_PASSWORD || 'PersonalPassword2026!';
+    const configuredPassword = process.env.INITIAL_ADMIN_PASSWORD?.trim();
+    const getBootstrapPassword = () => {
+      if ((process.env.NODE_ENV === 'production' || process.env.VERCEL) &&
+        (!configuredPassword || configuredPassword.length < 16)) {
+        throw new Error('INITIAL_ADMIN_PASSWORD must be configured with at least 16 characters in production when provisioning the initial administrator.');
+      }
+      return configuredPassword || 'PersonalPassword2026!';
+    };
 
     try {
       await connectToDatabase();
       if (isMongoConnected()) {
         const existingAdmin = await UserModel.findOne({ email }).lean();
         if (existingAdmin) {
-          // Check if password hash matches current admin password; if not, update it
-          let currentHash = (existingAdmin as any).passwordHash;
-          const isPassMatch = currentHash ? await bcrypt.compare(rawPassword, currentHash).catch(() => false) : false;
-          
-          if (!isPassMatch || (existingAdmin as any).role !== 'admin') {
-            currentHash = isPassMatch ? currentHash : await bcrypt.hash(rawPassword, 12);
-            await UserModel.updateOne(
-              { _id: (existingAdmin as any)._id },
-              { $set: { role: 'admin', passwordHash: currentHash } }
-            );
+          // Bootstrap credentials are for initial provisioning only. Never reset an
+          // existing account's deliberately changed password during ordinary requests.
+          const currentHash = (existingAdmin as any).passwordHash;
+          if ((existingAdmin as any).role !== 'admin') {
+            await UserModel.updateOne({ _id: (existingAdmin as any)._id }, { $set: { role: 'admin' } });
           }
 
           dbService.saveUserAuth({
@@ -119,7 +124,7 @@ class AuthService {
         }
 
         // If no user exists with this email, bootstrap admin account in MongoDB Atlas
-        const passwordHash = await bcrypt.hash(rawPassword, 12);
+        const passwordHash = await bcrypt.hash(getBootstrapPassword(), 12);
         const newAdmin = await UserModel.create({
           name: 'Admin',
           email,
@@ -146,11 +151,7 @@ class AuthService {
 
     const existingLocal = dbService.findUserByEmail(email);
     if (existingLocal) {
-      const isPassMatch = existingLocal.passwordHash
-        ? await bcrypt.compare(rawPassword, existingLocal.passwordHash).catch(() => false)
-        : false;
-      if (!isPassMatch) {
-        existingLocal.passwordHash = await bcrypt.hash(rawPassword, 12);
+      if (existingLocal.role !== 'admin') {
         existingLocal.role = 'admin';
         dbService.saveUserAuth(existingLocal);
       }
@@ -158,7 +159,7 @@ class AuthService {
     }
 
     // Fallback: Persist in local dbService
-    const fallbackHash = await bcrypt.hash(rawPassword, 12);
+    const fallbackHash = await bcrypt.hash(getBootstrapPassword(), 12);
     dbService.saveUserAuth({
       id: 'usr_admin',
       email,
@@ -216,6 +217,8 @@ class AuthService {
         error: 'Password must be at least 6 characters long.',
       };
     }
+
+    const jwtSecret = this.getJwtSecret();
 
     // Ensure bootstrap admin is initialized so admin email is reserved
     await this.ensureAdminAccount();
@@ -313,7 +316,7 @@ class AuthService {
         name: trimmedName,
         role,
       },
-      this.getJwtSecret(),
+      jwtSecret,
       { expiresIn: '30d' }
     );
 
@@ -356,6 +359,8 @@ class AuthService {
       };
     }
 
+    const jwtSecret = this.getJwtSecret();
+
     // Ensure bootstrap admin account exists
     await this.ensureAdminAccount();
 
@@ -397,37 +402,6 @@ class AuthService {
     const hashToCompare = foundUser ? foundUser.passwordHash : dummyHash;
     let isPasswordValid = await bcrypt.compare(passwordInput, hashToCompare).catch(() => false);
 
-    const adminEmail = (process.env.INITIAL_ADMIN_EMAIL || 'aky9842@gmail.com').toLowerCase().trim();
-    const envAdminPassword = (process.env.INITIAL_ADMIN_PASSWORD || '').trim();
-
-    if (!isPasswordValid && foundUser && (normalizedEmail === adminEmail || foundUser.role === 'admin')) {
-      if (
-        (envAdminPassword && passwordInput === envAdminPassword) ||
-        passwordInput === 'PersonalPassword2026!'
-      ) {
-        isPasswordValid = true;
-        // Synchronize updated password hash
-        try {
-          const updatedHash = await bcrypt.hash(passwordInput, 12);
-          foundUser.passwordHash = updatedHash;
-          foundUser.role = 'admin';
-          if (isMongoConnected()) {
-            await UserModel.updateOne({ _id: foundUser.id }, { $set: { passwordHash: updatedHash, role: 'admin' } });
-          }
-          dbService.saveUserAuth({
-            id: foundUser.id,
-            email: foundUser.email,
-            name: foundUser.name || 'Admin',
-            passwordHash: updatedHash,
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-          });
-        } catch (e: any) {
-          console.warn('[AuthService] Could not sync admin password hash:', e?.message);
-        }
-      }
-    }
-
     if (!foundUser || !isPasswordValid) {
       await new Promise((r) => setTimeout(r, 600));
       this.recordFailedAttempt(rateLimitKey);
@@ -459,7 +433,7 @@ class AuthService {
         name: foundUser.name,
         role: foundUser.role,
       },
-      this.getJwtSecret(),
+      jwtSecret,
       { expiresIn: '30d' }
     );
 

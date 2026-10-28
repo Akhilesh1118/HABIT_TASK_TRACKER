@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { Habit, HabitCompletion, TaskCompletion, Task, FocusSession, CategoryItem } from '../../src/types.ts';
 import { isMongoConnected } from './mongoService.ts';
+import { mergeDailyPriorities } from '../utils/dailyPriorities.ts';
+import { scopeRecordsToUser } from '../utils/userScoping.ts';
 import {
   HabitModel,
   TaskModel,
@@ -25,6 +27,7 @@ interface DatabaseSchema {
   taskCompletions?: TaskCompletion[];
   focusSessions?: (FocusSession & { userId?: string })[];
   dailyPriorities?: Record<string, string[]>;
+  dailyPrioritiesByUser?: Record<string, Record<string, string[]>>;
   categories?: (CategoryItem & { userId: string })[];
   users?: DbUserAuth[];
   userAuth?: {
@@ -265,7 +268,7 @@ export class DbService {
     // 1. Sync tasks (non-destructive merge)
     if (Array.isArray(payload.tasks)) {
       const scopedIncoming = userId
-        ? payload.tasks.map((t) => ({ ...t, userId: t.userId || userId }))
+        ? scopeRecordsToUser(payload.tasks, userId)
         : payload.tasks;
       const otherUserTasks = userId ? this.data.tasks.filter((t) => t.userId && t.userId !== userId) : [];
       const existingUserTasks = userId ? this.data.tasks.filter((t) => t.userId === userId) : this.data.tasks;
@@ -291,7 +294,7 @@ export class DbService {
     // 2. Sync habits (non-destructive merge)
     if (Array.isArray(payload.habits)) {
       const scopedIncoming = userId
-        ? payload.habits.map((h) => ({ ...h, userId: h.userId || userId }))
+        ? scopeRecordsToUser(payload.habits, userId)
         : payload.habits;
       const otherUserHabits = userId ? this.data.habits.filter((h) => h.userId && h.userId !== userId) : [];
       const existingUserHabits = userId ? this.data.habits.filter((h) => h.userId === userId) : this.data.habits;
@@ -315,7 +318,7 @@ export class DbService {
     if (Array.isArray(payload.habitCompletions)) {
       const todayIST = getTodayISTStr();
       const scopedIncoming = userId
-        ? payload.habitCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+        ? scopeRecordsToUser(payload.habitCompletions, userId)
         : payload.habitCompletions;
       const otherUserComps = userId ? this.data.habitCompletions.filter((c) => c.userId && c.userId !== userId) : [];
       const existingUserComps = userId ? this.data.habitCompletions.filter((c) => c.userId === userId) : this.data.habitCompletions;
@@ -342,7 +345,7 @@ export class DbService {
       const todayIST = getTodayISTStr();
       const existingAllTaskComps = this.data.taskCompletions || [];
       const scopedIncoming = userId
-        ? payload.taskCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+        ? scopeRecordsToUser(payload.taskCompletions, userId)
         : payload.taskCompletions;
       const otherUserComps = userId ? existingAllTaskComps.filter((c) => c.userId && c.userId !== userId) : [];
       const existingUserComps = userId ? existingAllTaskComps.filter((c) => c.userId === userId) : existingAllTaskComps;
@@ -365,9 +368,11 @@ export class DbService {
     }
 
     // 5. Sync daily priorities
-    if (payload.dailyPriorities && typeof payload.dailyPriorities === 'object') {
-      if (JSON.stringify(payload.dailyPriorities) !== JSON.stringify(this.data.dailyPriorities)) {
-        this.data.dailyPriorities = payload.dailyPriorities;
+    if (payload.dailyPriorities && typeof payload.dailyPriorities === 'object' && userId) {
+      if (!this.data.dailyPrioritiesByUser) this.data.dailyPrioritiesByUser = {};
+      const mergedPriorities = mergeDailyPriorities(this.data.dailyPrioritiesByUser[userId], payload.dailyPriorities);
+      if (JSON.stringify(mergedPriorities) !== JSON.stringify(this.data.dailyPrioritiesByUser[userId] || {})) {
+        this.data.dailyPrioritiesByUser[userId] = mergedPriorities;
         isDirty = true;
       }
     }
@@ -451,7 +456,7 @@ export class DbService {
     if (!Array.isArray(clientTasks)) return;
     this.reloadIfDiskExists();
     const scopedIncoming = userId
-      ? clientTasks.map((t) => ({ ...t, userId: t.userId || userId }))
+      ? scopeRecordsToUser(clientTasks, userId)
       : clientTasks;
     const otherUserTasks = userId ? this.data.tasks.filter((t) => t.userId && t.userId !== userId) : [];
 
@@ -505,7 +510,7 @@ export class DbService {
     if (!Array.isArray(clientHabits)) return;
     this.reloadIfDiskExists();
     const scopedIncoming = userId
-      ? clientHabits.map((h) => ({ ...h, userId: h.userId || userId }))
+      ? scopeRecordsToUser(clientHabits, userId)
       : clientHabits;
     const otherUserHabits = userId ? this.data.habits.filter((h) => h.userId && h.userId !== userId) : [];
 
@@ -556,7 +561,7 @@ export class DbService {
     this.reloadIfDiskExists();
     const todayIST = getTodayISTStr();
     const scopedIncoming = userId
-      ? clientCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+      ? scopeRecordsToUser(clientCompletions, userId)
       : clientCompletions;
     const otherUserComps = userId ? this.data.habitCompletions.filter((c) => c.userId && c.userId !== userId) : [];
 
@@ -618,7 +623,7 @@ export class DbService {
     const todayIST = getTodayISTStr();
     const existingAll = this.data.taskCompletions || [];
     const scopedIncoming = userId
-      ? clientCompletions.map((c) => ({ ...c, userId: c.userId || userId }))
+      ? scopeRecordsToUser(clientCompletions, userId)
       : clientCompletions;
     const otherUserComps = userId ? existingAll.filter((c) => c.userId && c.userId !== userId) : [];
 
@@ -665,17 +670,17 @@ export class DbService {
   }
 
   // --- DAILY PRIORITIES ---
-  public getDailyPriorities(): Record<string, string[]> {
+  public getUserDailyPriorities(userId: string): Record<string, string[]> {
     this.reloadIfDiskExists();
-    return this.data.dailyPriorities || {};
+    return this.data.dailyPrioritiesByUser?.[userId] || {};
   }
 
-  public syncDailyPriorities(priorities: Record<string, string[]>): void {
+  public syncUserDailyPriorities(userId: string, priorities: Record<string, string[]>): void {
     this.reloadIfDiskExists();
-    if (JSON.stringify(priorities) === JSON.stringify(this.data.dailyPriorities)) {
-      return; // No changes, skip disk write completely
-    }
-    this.data.dailyPriorities = priorities;
+    if (!this.data.dailyPrioritiesByUser) this.data.dailyPrioritiesByUser = {};
+    const mergedPriorities = mergeDailyPriorities(this.data.dailyPrioritiesByUser[userId], priorities);
+    if (JSON.stringify(mergedPriorities) === JSON.stringify(this.data.dailyPrioritiesByUser[userId] || {})) return;
+    this.data.dailyPrioritiesByUser[userId] = mergedPriorities;
     this.persistData();
   }
 

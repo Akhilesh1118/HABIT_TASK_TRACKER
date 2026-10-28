@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { authService } from '../server/services/authService.ts';
-import { getAuthCookieOptions, getCookieFromRequest } from '../server/middleware/authMiddleware.ts';
+import { getAuthCookieOptions, getCookieFromRequest, verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
 
 /**
  * Serializes a cookie name/value pair with standard options into a Set-Cookie header string
@@ -198,6 +198,34 @@ export default async function handler(req: Request, res: Response) {
         sameSite: isProduction ? 'none' : 'lax',
       });
       return res.status(200).json({ success: true, message: 'Logged out successfully' });
+    }
+
+    if (action === 'change-password' && req.method === 'POST') {
+      const user = verifyRequestAuth(req);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized: Personal authentication required. Please log in.',
+        });
+      }
+
+      const { currentPassword, newPassword } = body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          error: 'Current password and new password are required.',
+        });
+      }
+
+      const result = await authService.changePassword(user.userId, currentPassword, newPassword);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Password updated successfully.',
+      });
     }
 
     if (action === 'me' && req.method === 'GET') {

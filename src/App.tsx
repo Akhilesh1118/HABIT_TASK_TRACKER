@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { storageService, parseDateKey } from './services/storageService';
 import { buildMonthGrid } from './utils/calendarUtils';
 import { Header } from './components/Header';
@@ -6,21 +6,25 @@ import { StatsBanner } from './components/StatsBanner';
 import { ActivityGrid } from './components/ActivityGrid';
 import { DailyTaskPanel } from './components/DailyTaskPanel';
 import { QuickNotesCard } from './components/QuickNotesCard';
-import { TaskModal } from './components/TaskModal';
-import { HabitManagerModal } from './components/HabitManagerModal';
-import { FocusModeModal } from './components/FocusModeModal';
 import { MiniFocusBar } from './components/MiniFocusBar';
-import { ProductivityDashboard } from './components/ProductivityDashboard';
-import { SpacedRevisionModal } from './components/SpacedRevisionModal';
-import { StreakProtectionModal } from './components/StreakProtectionModal';
-import { WeeklyReviewModal } from './components/WeeklyReviewModal';
-import { AICoachModal } from './components/AICoachModal';
+import { FeatureErrorBoundary } from './components/FeatureErrorBoundary';
 import { LoginPage } from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
 import { useFocusTimer } from './hooks/useFocusTimer';
 import { Task, Habit, ProductivityStats, DailySummaryItem } from './types';
 import { authenticatedFetch, clearAuthToken, getAuthToken } from './utils/authClient';
 import { getCurrentIST } from './utils/timeUtils';
+
+const ProductivityDashboard = lazy(() =>
+  import('./components/ProductivityDashboard').then((module) => ({ default: module.ProductivityDashboard }))
+);
+const FocusModeModal = lazy(() => import('./components/FocusModeModal').then((module) => ({ default: module.FocusModeModal })));
+const TaskModal = lazy(() => import('./components/TaskModal').then((module) => ({ default: module.TaskModal })));
+const HabitManagerModal = lazy(() => import('./components/HabitManagerModal').then((module) => ({ default: module.HabitManagerModal })));
+const SpacedRevisionModal = lazy(() => import('./components/SpacedRevisionModal').then((module) => ({ default: module.SpacedRevisionModal })));
+const StreakProtectionModal = lazy(() => import('./components/StreakProtectionModal').then((module) => ({ default: module.StreakProtectionModal })));
+const WeeklyReviewModal = lazy(() => import('./components/WeeklyReviewModal').then((module) => ({ default: module.WeeklyReviewModal })));
+const AICoachModal = lazy(() => import('./components/AICoachModal').then((module) => ({ default: module.AICoachModal })));
 
 export default function App() {
   // Use today's date from environment or client (Asia/Kolkata timezone)
@@ -594,14 +598,18 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <ProductivityDashboard
-            selectedDate={selectedDate}
-            todayDate={todayDate}
-            onSelectDate={handleSelectDate}
-            onStartFocusSession={() => setIsFocusModalOpen(true)}
-            onSwitchToTasksView={() => setActiveTab('schedule')}
-            refreshTrigger={refreshTrigger}
-          />
+          <FeatureErrorBoundary>
+            <Suspense fallback={<div className="flex min-h-64 items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading analytics…</div>}>
+              <ProductivityDashboard
+                selectedDate={selectedDate}
+                todayDate={todayDate}
+                onSelectDate={handleSelectDate}
+                onStartFocusSession={() => setIsFocusModalOpen(true)}
+                onSwitchToTasksView={() => setActiveTab('schedule')}
+                refreshTrigger={refreshTrigger}
+              />
+            </Suspense>
+          </FeatureErrorBoundary>
         )}
       </main>
 
@@ -617,7 +625,7 @@ export default function App() {
       )}
 
       {/* Full Distraction-Free Focus Mode Modal */}
-      <FocusModeModal
+      {isFocusModalOpen && <Suspense fallback={null}><FocusModeModal
         isOpen={isFocusModalOpen}
         onClose={() => setIsFocusModalOpen(false)}
         timerState={focusTimer.timerState}
@@ -634,10 +642,10 @@ export default function App() {
         onToggleAutoMarkTaskComplete={focusTimer.setAutoMarkTaskComplete}
         todayTasks={todayItems}
         todayDate={todayDate}
-      />
+      /></Suspense>}
 
       {/* Task Add/Edit Modal */}
-      <TaskModal
+      {isTaskModalOpen && <Suspense fallback={null}><TaskModal
         isOpen={isTaskModalOpen}
         onClose={() => {
           setIsTaskModalOpen(false);
@@ -647,10 +655,10 @@ export default function App() {
         initialTask={editingTask}
         defaultDate={selectedDate}
         targetOccurrenceDate={editingTaskDate}
-      />
+      /></Suspense>}
 
       {/* Habit Manager Modal */}
-      <HabitManagerModal
+      {isHabitModalOpen && <Suspense fallback={null}><HabitManagerModal
         isOpen={isHabitModalOpen}
         onClose={() => setIsHabitModalOpen(false)}
         habits={habits}
@@ -658,37 +666,37 @@ export default function App() {
         onToggleActive={handleToggleHabitActive}
         onDeleteHabit={handleDeleteHabit}
         todayDate={todayDate}
-      />
+      /></Suspense>}
 
       {/* Spaced Revision System Modal */}
-      <SpacedRevisionModal
+      {isRevisionModalOpen && <Suspense fallback={null}><SpacedRevisionModal
         isOpen={isRevisionModalOpen}
         onClose={() => setIsRevisionModalOpen(false)}
         todayDate={todayDate}
         onScheduleUpdated={triggerRefresh}
-      />
+      /></Suspense>}
 
       {/* Streak Protection & Recovery Modal */}
-      <StreakProtectionModal
+      {isStreakProtectionOpen && <Suspense fallback={null}><StreakProtectionModal
         isOpen={isStreakProtectionOpen}
         onClose={() => setIsStreakProtectionOpen(false)}
         todayDate={todayDate}
         onStreakUpdated={triggerRefresh}
-      />
+      /></Suspense>}
 
       {/* Weekly Productivity Review Modal */}
-      <WeeklyReviewModal
+      {isWeeklyReviewModalOpen && <Suspense fallback={null}><WeeklyReviewModal
         isOpen={isWeeklyReviewModalOpen}
         onClose={() => setIsWeeklyReviewModalOpen(false)}
         review={weeklyReview}
-      />
+      /></Suspense>}
 
       {/* AI Productivity Coach Modal */}
-      <AICoachModal
+      {isAICoachModalOpen && <Suspense fallback={null}><AICoachModal
         isOpen={isAICoachModalOpen}
         onClose={() => setIsAICoachModalOpen(false)}
         targetDateStr={selectedDate}
-      />
+      /></Suspense>}
     </div>
   );
 }

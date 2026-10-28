@@ -1,8 +1,11 @@
 import type { Request, Response } from 'express';
 import { authService } from '../../server/services/authService.ts';
 import { UserModel } from '../../server/models/User.ts';
+import { authorizeAdminRequest } from '../../server/middleware/authMiddleware.ts';
 
 export default async function handler(req: Request, res: Response) {
+  if (!authorizeAdminRequest(req, res)) return;
+
   const isVercel = Boolean(process.env.VERCEL);
   const authServiceLoaded = Boolean(authService && typeof authService.login === 'function');
   const userModelLoaded = Boolean(UserModel && typeof UserModel.findOne === 'function');

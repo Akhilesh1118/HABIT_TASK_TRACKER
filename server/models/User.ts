@@ -46,6 +46,11 @@ const UserSchema: Schema = new Schema(
     lastLoginAt: {
       type: Date,
     },
+    // Kept on the owning account so per-user priority updates are durable and atomic.
+    dailyPriorities: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,

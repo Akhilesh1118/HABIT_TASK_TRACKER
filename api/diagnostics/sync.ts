@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express';
 import { dbService } from '../../server/services/dbService.ts';
 import { TaskModel, HabitModel, HabitCompletionModel } from '../../server/models/HabitData.ts';
-import { verifyRequestAuth } from '../../server/middleware/authMiddleware.ts';
+import { authorizeAdminRequest } from '../../server/middleware/authMiddleware.ts';
 
 export default async function handler(req: Request, res: Response) {
+  if (!authorizeAdminRequest(req, res)) return;
+
   const isVercel = Boolean(process.env.VERCEL);
   const dbServiceLoaded = Boolean(dbService && typeof dbService.getTasks === 'function');
   const habitDataModelLoaded = Boolean(
@@ -11,7 +13,7 @@ export default async function handler(req: Request, res: Response) {
     HabitModel && typeof HabitModel.find === 'function' &&
     HabitCompletionModel && typeof HabitCompletionModel.find === 'function'
   );
-  const authMiddlewareLoaded = Boolean(typeof verifyRequestAuth === 'function');
+  const authMiddlewareLoaded = Boolean(typeof authorizeAdminRequest === 'function');
 
   return res.status(200).json({
     status: 'ok',

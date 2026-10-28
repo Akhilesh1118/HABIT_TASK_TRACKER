@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import type { AICoachAnalysisResult, AICoachInputData } from '../../src/types.ts';
-import { TaskModel, HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
+import { TaskModel, TaskCompletionModel, HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
+import { aggregateCompletedStudyMinutes } from '../../src/utils/weeklyAnalytics.ts';
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -154,8 +155,38 @@ export class AICoachService {
       const dailyAvgPlanned = plannedTasks > 0 ? Math.round(plannedTasks / 7) : 0;
       const dailyAvgCompleted = completedTasks > 0 ? Math.round(completedTasks / 7) : 0;
 
-      // Authoritative study tasks from MongoDB
-      const studyTasks = weekTasks.filter((t) => t.isStudySession && t.studySubject);
+      // Count study time only for completed occurrences. Recurring tasks use
+      // date-specific completion documents; one-off tasks retain legacy status fields.
+      const allTaskCompletions = await TaskCompletionModel.find({
+        userId,
+        date: { $gte: weekStartDate, $lte: weekEndDate },
+        completed: true,
+      }).lean();
+      const taskById = new Map((mongoTasks as any[]).map((task) => [task.id, task]));
+      const completedStudyByOccurrence = new Map<string, any>();
+      allTaskCompletions.forEach((completion: any) => {
+        const task = taskById.get(completion.taskId);
+        if (task?.isStudySession && task.studySubject && completion.date) {
+          completedStudyByOccurrence.set(`${task.id}_${completion.date}`, task);
+        }
+      });
+      (mongoTasks as any[]).forEach((task) => {
+        if (!task.isStudySession || !task.studySubject || (task.recurringSchedule && task.recurringSchedule !== 'none')) return;
+        if (!Boolean(task.completed || task.status === 'completed')) return;
+        const completionDateRaw = task.completedAt || task.scheduledDate || task.date;
+        if (!completionDateRaw) return;
+        let completionDate = String(completionDateRaw).split('T')[0];
+        if (String(completionDateRaw).includes('T')) {
+          const parsed = new Date(String(completionDateRaw));
+          if (!Number.isNaN(parsed.getTime())) {
+            completionDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(parsed);
+          }
+        }
+        if (completionDate >= weekStartDate && completionDate <= weekEndDate) {
+          completedStudyByOccurrence.set(`${task.id}_${completionDate}`, task);
+        }
+      });
+      const studyTasks = Array.from(completedStudyByOccurrence.values());
       let authoritativeDistribution: Array<{
         subject: string;
         percentage: number;
@@ -172,12 +203,12 @@ export class AICoachService {
       };
 
       if (studyTasks.length > 0) {
-        const subjectMap = new Map<string, number>();
-        studyTasks.forEach((t) => {
-          const subj = t.studySubject || 'General';
-          const mins = Number(t.studyDurationMinutes) || Number(t.duration) || 0;
-          subjectMap.set(subj, (subjectMap.get(subj) || 0) + mins);
-        });
+        const subjectMap = aggregateCompletedStudyMinutes(Array.from(completedStudyByOccurrence.entries()).map(([occurrenceId, task]) => ({
+          occurrenceId,
+          completed: true,
+          subject: task.studySubject || 'General',
+          minutes: Number(task.studyDurationMinutes) || Number(task.duration) || 0,
+        })));
         const totalMins = Array.from(subjectMap.values()).reduce((a, b) => a + b, 0);
         if (totalMins > 0) {
           authoritativeDistribution = Array.from(subjectMap.entries()).map(([subj, mins]) => {

@@ -62,7 +62,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    const analysis = await aiCoachService.analyzeWeeklyProductivity(inputData);
+    const analysis = await aiCoachService.analyzeWeeklyProductivity(inputData, user.userId);
     return res.status(200).json({
       success: true,
       analysis,

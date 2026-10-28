@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from 'express';
 import { requireAuth } from '../middleware/authMiddleware.ts';
+import { isTodayDateKey } from '../utils/dateValidation.ts';
 import { HabitModel, HabitCompletionModel } from '../models/HabitData.ts';
 import { dbService, getTodayISTStr } from '../services/dbService.ts';
 import type { Habit, HabitCompletion } from '../../src/types.ts';
@@ -258,6 +259,10 @@ habitRouter.post('/:id/toggle', requireAuth, async (req: Request, res: Response)
 
     const todayIST = getTodayISTStr();
     const newStatus = completed !== undefined ? Boolean(completed) : true;
+
+    if (!isTodayDateKey(date)) {
+      return res.status(400).json({ success: false, error: 'Habit completion can only be changed for today using a valid YYYY-MM-DD date.' });
+    }
 
     if (newStatus && date > todayIST) {
       return res.status(400).json({

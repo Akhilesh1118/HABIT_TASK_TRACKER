@@ -1,8 +1,11 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { connectToDatabase, isMongoConnected } from '../../server/services/mongoService.ts';
+import { authorizeAdminRequest } from '../../server/middleware/authMiddleware.ts';
 
 export default async function handler(req: Request, res: Response) {
+  if (!authorizeAdminRequest(req, res)) return;
+
   const isVercel = Boolean(process.env.VERCEL);
   const mongodbConfigured = Boolean(process.env.MONGODB_URI && process.env.MONGODB_URI.trim().length > 0);
 

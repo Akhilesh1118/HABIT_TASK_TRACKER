@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express';
 import { dbService } from '../server/services/dbService.ts';
 import { connectToDatabase, isMongoConnected } from '../server/services/mongoService.ts';
-import { TaskModel } from '../server/models/HabitData.ts';
+import { TaskModel, TaskCompletionModel } from '../server/models/HabitData.ts';
 import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
-import type { Task } from '../src/types.ts';
+import { getTodayISTStr } from '../server/services/dbService.ts';
+import { isTodayDateKey, isValidDateKey } from '../server/utils/dateValidation.ts';
+import type { Task, TaskCompletion } from '../src/types.ts';
 
 async function parseRequestBody(req: any): Promise<any> {
   if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
@@ -116,6 +118,9 @@ export default async function handler(req: Request, res: Response) {
       const taskId = body.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
       const scheduledDate = body.scheduledDate || body.date || body.dueDate || now.split('T')[0];
       const isCompleted = Boolean(body.completed || body.status === 'completed');
+      if (isCompleted && !isTodayDateKey(scheduledDate)) {
+        return res.status(400).json({ success: false, error: 'A task can only be created completed for today.' });
+      }
       const status = body.status || (isCompleted ? 'completed' : 'pending');
       const completedAt = isCompleted ? (body.completedAt || now) : null;
 
@@ -134,6 +139,8 @@ export default async function handler(req: Request, res: Response) {
         status,
         completedAt,
         recurringSchedule: body.recurringSchedule || 'none',
+        excludedDates: body.excludedDates || [],
+        recurringParentId: body.recurringParentId,
         isTopPriority: Boolean(body.isTopPriority),
         priorityRank: body.priorityRank,
         isStudySession: Boolean(body.isStudySession),
@@ -186,6 +193,73 @@ export default async function handler(req: Request, res: Response) {
 
       if (isCompleteAction || body.completed !== undefined) {
         const isCompleted = body.completed !== undefined ? Boolean(body.completed) : true;
+        const todayIST = getTodayISTStr();
+        if (body.date !== undefined && !isValidDateKey(body.date)) {
+          return res.status(400).json({ success: false, error: 'Task completion date must use a valid YYYY-MM-DD value.' });
+        }
+        const targetDate = body.date || todayIST;
+
+        if (!isTodayDateKey(targetDate)) {
+          return res.status(400).json({ success: false, error: 'Task completion can only be changed for today using a valid YYYY-MM-DD date.' });
+        }
+
+        if (isCompleted && targetDate > todayIST) {
+          return res.status(400).json({
+            success: false,
+            error: 'A future task cannot be completed before its scheduled date.',
+          });
+        }
+        if (isCompleted && targetDate < todayIST) {
+          return res.status(400).json({
+            success: false,
+            error: 'A previous task cannot be completed after its scheduled date.',
+          });
+        }
+
+        let taskDefinition: Task | null = null;
+        if (isMongoConnected()) {
+          try {
+            taskDefinition = await TaskModel.findOne({ id: taskId, userId }).lean() as Task | null;
+          } catch (dbErr: any) {
+            console.warn('[Vercel Task API] MongoDB task lookup warning:', dbErr?.message);
+          }
+        }
+        if (!taskDefinition) {
+          taskDefinition = dbService.getTasks(userId).find((task) => task.id === taskId) || null;
+        }
+        if (!taskDefinition) {
+          return res.status(404).json({ success: false, error: 'Task not found' });
+        }
+
+        const completion: TaskCompletion = {
+          id: `tc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          taskId,
+          userId,
+          date: targetDate,
+          completed: isCompleted,
+          completedAt: isCompleted ? (body.completedAt || now) : null,
+        };
+        if (isMongoConnected()) {
+          try {
+            if (isCompleted) {
+              await TaskCompletionModel.findOneAndUpdate(
+                { taskId, date: targetDate, userId },
+                { $set: completion },
+                { upsert: true, new: true }
+              );
+            } else {
+              await TaskCompletionModel.deleteOne({ taskId, date: targetDate, userId });
+            }
+          } catch (dbErr: any) {
+            console.warn('[Vercel Task API] MongoDB completion update warning:', dbErr?.message);
+          }
+        }
+        const taskCompletions = dbService.getTaskCompletions(userId)
+          .filter((item) => !(item.taskId === taskId && item.date === targetDate));
+        if (isCompleted) taskCompletions.push(completion);
+        dbService.syncTaskCompletions(taskCompletions, userId);
+
+        const isRecurring = Boolean(taskDefinition.recurringSchedule && taskDefinition.recurringSchedule !== 'none');
         const updateData = {
           completed: isCompleted,
           status: (isCompleted ? 'completed' : 'pending') as 'completed' | 'pending',
@@ -194,31 +268,38 @@ export default async function handler(req: Request, res: Response) {
           userId,
         };
 
-        let doc: any = null;
-        if (isMongoConnected()) {
-          try {
-            doc = await TaskModel.findOneAndUpdate(
-              { id: taskId, userId },
-              { $set: updateData },
-              { new: true }
-            ).lean();
-          } catch (dbErr: any) {
-            console.warn('[Vercel Task API] MongoDB update warning:', dbErr?.message);
+        let updatedTask: Task | null = taskDefinition;
+        if (!isRecurring) {
+          if (isMongoConnected()) {
+            try {
+              updatedTask = await TaskModel.findOneAndUpdate(
+                { id: taskId, userId },
+                { $set: updateData },
+                { new: true }
+              ).lean() as Task | null;
+            } catch (dbErr: any) {
+              console.warn('[Vercel Task API] MongoDB update warning:', dbErr?.message);
+            }
+          }
+
+          const currentTasks = dbService.getTasks(userId);
+          const idx = currentTasks.findIndex((task) => task.id === taskId);
+          if (idx !== -1) {
+            currentTasks[idx] = { ...currentTasks[idx], ...updateData };
+            dbService.syncTasks(currentTasks, userId);
+            updatedTask = currentTasks[idx];
           }
         }
 
-        const currentTasks = dbService.getTasks(userId);
-        const idx = currentTasks.findIndex((t) => t.id === taskId);
-        if (idx !== -1) {
-          currentTasks[idx] = { ...currentTasks[idx], ...updateData };
-          dbService.syncTasks(currentTasks, userId);
-        }
-
-        if (!doc && idx === -1) {
-          return res.status(404).json({ success: false, error: 'Task not found' });
-        }
-
-        return res.status(200).json({ success: true, task: doc || currentTasks[idx] });
+        return res.status(200).json({
+          success: true,
+          task: updatedTask,
+          completion: {
+            taskId,
+            date: targetDate,
+            completed: isCompleted,
+          },
+        });
       }
 
       // General update
@@ -228,6 +309,23 @@ export default async function handler(req: Request, res: Response) {
         userId,
         updatedAt: now,
       };
+
+      if (body.completed !== undefined || body.status !== undefined) {
+        let existingTask: Task | null = null;
+        if (isMongoConnected()) {
+          existingTask = await TaskModel.findOne({ id: taskId, userId }).lean() as Task | null;
+        }
+        existingTask ||= dbService.getTasks(userId).find((task) => task.id === taskId) || null;
+        const requestedCompleted = body.completed !== undefined ? Boolean(body.completed) : body.status === 'completed';
+        const currentlyCompleted = Boolean(existingTask?.completed || existingTask?.status === 'completed');
+        const completionTimeChanged = body.completedAt !== undefined && body.completedAt !== existingTask?.completedAt;
+        if (requestedCompleted !== currentlyCompleted || completionTimeChanged) {
+          const targetDate = body.date || body.scheduledDate || existingTask?.scheduledDate || existingTask?.date || getTodayISTStr();
+          if (!isTodayDateKey(targetDate)) {
+            return res.status(400).json({ success: false, error: 'Task completion can only be changed for today.' });
+          }
+        }
+      }
 
       if (body.scheduledDate) {
         updateData.scheduledDate = body.scheduledDate;
@@ -279,6 +377,7 @@ export default async function handler(req: Request, res: Response) {
           if (result.deletedCount && result.deletedCount > 0) {
             deleted = true;
           }
+          await TaskCompletionModel.deleteMany({ taskId, userId });
         } catch (dbErr: any) {
           console.warn('[Vercel Task API] MongoDB delete warning:', dbErr?.message);
         }
@@ -290,6 +389,8 @@ export default async function handler(req: Request, res: Response) {
       }
       const remainingTasks = currentTasks.filter((t) => t.id !== taskId);
       dbService.syncTasks(remainingTasks, userId);
+      const remainingCompletions = dbService.getTaskCompletions(userId).filter((completion) => completion.taskId !== taskId);
+      dbService.syncTaskCompletions(remainingCompletions, userId);
 
       if (!deleted) {
         return res.status(404).json({ success: false, error: 'Task not found' });

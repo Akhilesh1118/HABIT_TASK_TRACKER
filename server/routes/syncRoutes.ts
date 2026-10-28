@@ -2,6 +2,9 @@ import express, { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/authMiddleware.ts';
 import { TaskModel, HabitModel, HabitCompletionModel, TaskCompletionModel, FocusSessionModel, UserCategoryModel } from '../models/HabitData.ts';
+import { UserModel } from '../models/User.ts';
+import { validateSyncCompletionDates, validateTaskCompletionSync } from '../utils/dateValidation.ts';
+import { isValidDailyPriorities } from '../utils/dailyPriorities.ts';
 import { dbService, getTodayISTStr } from '../services/dbService.ts';
 import { isMongoConnected } from '../services/mongoService.ts';
 import type { Task, Habit, HabitCompletion, TaskCompletion, FocusSession, CategoryItem } from '../../src/types.ts';
@@ -134,7 +137,12 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       categories = dbService.getCategories(userId);
     }
 
-    dailyPriorities = dbService.getDailyPriorities();
+    if (isMongoConnected()) {
+      const priorityOwner = await UserModel.findById(userId).select('dailyPriorities').lean() as any;
+      dailyPriorities = priorityOwner?.dailyPriorities || dbService.getUserDailyPriorities(userId);
+    } else if (!process.env.VERCEL) {
+      dailyPriorities = dbService.getUserDailyPriorities(userId);
+    }
 
     return res.json({
       success: true,
@@ -143,7 +151,8 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       habitCompletions,
       taskCompletions,
       focusSessions,
-      dailyPriorities,
+      ...(isMongoConnected() || !process.env.VERCEL ? { dailyPriorities } : {}),
+      dailyPrioritiesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
       categories,
       source: isMongoConnected() ? 'mongodb' : 'local_fallback',
     });
@@ -202,6 +211,25 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
         success: false,
         error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories) must be provided.',
       });
+    }
+    if (hasPriorities && !isValidDailyPriorities(dailyPriorities)) {
+      return res.status(400).json({ success: false, error: 'Daily priorities must map valid YYYY-MM-DD dates to arrays of up to three task IDs.' });
+    }
+
+    const todayIST = getTodayISTStr();
+    const existingTasksForValidation = isMongoConnected()
+      ? await TaskModel.find({ userId }).select('id date scheduledDate completed status completedAt').lean() as any[]
+      : dbService.getTasks(userId);
+    const existingHabitCompletions = isMongoConnected()
+      ? await HabitCompletionModel.find({ userId }).select('habitId date completed').lean() as any[]
+      : dbService.getHabitCompletions(userId);
+    const existingTaskCompletions = isMongoConnected()
+      ? await TaskCompletionModel.find({ userId }).select('taskId date completed completedAt').lean() as any[]
+      : dbService.getTaskCompletions(userId);
+    if (!validateTaskCompletionSync(hasTasks ? tasks : undefined, existingTasksForValidation, todayIST) ||
+        !validateSyncCompletionDates(hasCompletions ? habitCompletions : undefined, existingHabitCompletions, (c: HabitCompletion) => `${c.habitId}_${c.date}`, todayIST) ||
+        !validateSyncCompletionDates(hasTaskCompletions ? taskCompletions : undefined, existingTaskCompletions, (c: TaskCompletion) => `${c.taskId}_${c.date}`, todayIST)) {
+      return res.status(400).json({ success: false, error: 'Sync cannot add or change completion records outside today.' });
     }
 
     // 1. Authoritative synchronization in MongoDB
@@ -335,6 +363,16 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
             );
           }
         }
+
+        if (hasPriorities) {
+          await UserModel.updateOne({ _id: userId }, [{
+            $set: {
+              dailyPriorities: {
+                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, dailyPriorities],
+              },
+            },
+          }]);
+        }
       } catch (mongoErr: any) {
         console.warn('[SyncRoutes] Authoritative MongoDB sync warning:', mongoErr?.message);
       }
@@ -346,7 +384,8 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     if (hasHabits) syncPayload.habits = habits;
     if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
     if (hasTaskCompletions) syncPayload.taskCompletions = taskCompletions;
-    if (hasPriorities) syncPayload.dailyPriorities = dailyPriorities;
+    const prioritiesPersisted = Boolean(isMongoConnected() || !process.env.VERCEL);
+    if (hasPriorities && prioritiesPersisted) syncPayload.dailyPriorities = dailyPriorities;
     if (hasFocus) {
       dbService.syncFocusSessions(focusSessions, userId);
     }
@@ -360,6 +399,7 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       success: true,
       syncedAt: new Date().toISOString(),
       changed: result.changed,
+      dailyPrioritiesPersisted: prioritiesPersisted,
       counts: {
         tasks: result.tasksCount,
         habits: result.habitsCount,

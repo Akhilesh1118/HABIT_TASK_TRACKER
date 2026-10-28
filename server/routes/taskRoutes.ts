@@ -1,8 +1,10 @@
 import express, { type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/authMiddleware.ts';
+import { isTodayDateKey, isValidDateKey } from '../utils/dateValidation.ts';
 import { TaskModel, TaskCompletionModel } from '../models/HabitData.ts';
 import { dbService, getTodayISTStr } from '../services/dbService.ts';
+import { isMongoConnected } from '../services/mongoService.ts';
 import type { Task, TaskCompletion } from '../../src/types.ts';
 
 export const taskRouter = express.Router();
@@ -76,6 +78,9 @@ taskRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     const taskId = body.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const scheduledDate = body.scheduledDate || body.date || body.dueDate || now.split('T')[0];
     const isCompleted = Boolean(body.completed || body.status === 'completed');
+    if (isCompleted && !isTodayDateKey(scheduledDate)) {
+      return res.status(400).json({ success: false, error: 'A task can only be created completed for today.' });
+    }
     const status = body.status || (isCompleted ? 'completed' : 'pending');
     const completedAt = isCompleted ? (body.completedAt || now) : null;
 
@@ -152,6 +157,24 @@ taskRouter.put('/:id', requireAuth, async (req: Request, res: Response) => {
     }
 
     const now = new Date().toISOString();
+    if (body.completed !== undefined || body.status !== undefined) {
+      let existingTask: any = null;
+      try {
+        existingTask = await TaskModel.findOne({ id: taskId, userId }).lean();
+      } catch {
+        // Local fallback below remains authoritative when MongoDB is unavailable.
+      }
+      const fallbackTask = existingTask || dbService.getTasks(userId).find((task) => task.id === taskId);
+      const requestedCompleted = body.completed !== undefined ? Boolean(body.completed) : body.status === 'completed';
+      const currentlyCompleted = Boolean(fallbackTask?.completed || fallbackTask?.status === 'completed');
+      const completionTimeChanged = body.completedAt !== undefined && body.completedAt !== fallbackTask?.completedAt;
+      if (requestedCompleted !== currentlyCompleted || completionTimeChanged) {
+        const targetDate = body.date || body.scheduledDate || fallbackTask?.scheduledDate || fallbackTask?.date || getTodayISTStr();
+        if (!isTodayDateKey(targetDate)) {
+          return res.status(400).json({ success: false, error: 'Task completion can only be changed for today.' });
+        }
+      }
+    }
     const updateData: any = {
       ...body,
       id: taskId,
@@ -223,8 +246,15 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
     const { completed, date, completedAt } = req.body || {};
     const now = new Date().toISOString();
     const todayIST = getTodayISTStr();
+    if (date !== undefined && !isValidDateKey(date)) {
+      return res.status(400).json({ success: false, error: 'Task completion date must use a valid YYYY-MM-DD value.' });
+    }
     const targetDate = date || todayIST;
     const isCompleted = completed !== undefined ? Boolean(completed) : true;
+
+    if (!isTodayDateKey(targetDate)) {
+      return res.status(400).json({ success: false, error: 'Task completion can only be changed for today using a valid YYYY-MM-DD date.' });
+    }
 
     if (isCompleted && targetDate > todayIST) {
       return res.status(400).json({
@@ -241,7 +271,9 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
     }
 
     // Find the task definition
-    let task = await TaskModel.findOne({ id: taskId, userId }).lean() as any;
+    let task = isMongoConnected()
+      ? await TaskModel.findOne({ id: taskId, userId }).lean() as any
+      : undefined;
     if (!task) {
       const currentTasks = dbService.getTasks(userId);
       task = currentTasks.find((t) => t.id === taskId);
@@ -266,13 +298,13 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
       completedAt: isCompleted ? (completedAt || now) : null,
     };
 
-    if (isCompleted) {
+    if (isMongoConnected() && isCompleted) {
       await TaskCompletionModel.findOneAndUpdate(
         { taskId, date: targetDate, userId },
         { $set: compRecord },
         { upsert: true, new: true }
       ).catch(() => {});
-    } else {
+    } else if (isMongoConnected()) {
       await TaskCompletionModel.deleteOne({ taskId, date: targetDate, userId }).catch(() => {});
     }
 
@@ -301,11 +333,13 @@ taskRouter.patch('/:id/complete', requireAuth, async (req: Request, res: Respons
         userId,
       };
 
-      updatedTaskDoc = await TaskModel.findOneAndUpdate(
-        { id: taskId, userId },
-        { $set: updateData },
-        { new: true }
-      ).lean();
+      if (isMongoConnected()) {
+        updatedTaskDoc = await TaskModel.findOneAndUpdate(
+          { id: taskId, userId },
+          { $set: updateData },
+          { new: true }
+        ).lean();
+      }
 
       const currentTasks = dbService.getTasks(userId);
       const idx = currentTasks.findIndex((t) => t.id === taskId);

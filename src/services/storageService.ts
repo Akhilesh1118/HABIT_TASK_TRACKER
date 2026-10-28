@@ -31,6 +31,7 @@ import {
 } from '../types';
 import { authenticatedFetch } from '../utils/authClient';
 import { getCurrentIST } from '../utils/timeUtils';
+import { aggregateCompletedStudyMinutes, isUniqueMorningPeak } from '../utils/weeklyAnalytics';
 
 const STORAGE_KEYS = {
   USER: 'habits_app_user',
@@ -1189,6 +1190,8 @@ class StorageService {
         title: t.title,
         category: t.category,
         completed: isCompletedOnDate,
+        completedAt: this.getTaskCompletions().find((completion) => completion.taskId === t.id && completion.date === dateStr)?.completedAt
+          || (isCompletedOnDate && !(t.recurringSchedule && t.recurringSchedule !== 'none') ? t.completedAt : null),
         isHabit: false,
         duration: t.duration,
         description: t.description,
@@ -1223,6 +1226,7 @@ class StorageService {
         title: t.title,
         category: t.category,
         completed: true,
+        completedAt: t.completedAt,
         isHabit: false,
         duration: t.duration,
         description: t.description,
@@ -1863,10 +1867,10 @@ class StorageService {
     // Trailing base
     let consistencyRate = Math.round((activeDaysCount / 7) * 100);
     // Streak recognition: if user has 5+ consecutive active days, anchor consistency high (92-96%)
-    if (activeDaysCount >= 6) {
-      consistencyRate = 92;
-    } else if (activeDaysCount === 7) {
+    if (activeDaysCount === 7) {
       consistencyRate = 96;
+    } else if (activeDaysCount === 6) {
+      consistencyRate = 92;
     }
     const consistencyPoints = Math.round(consistencyRate * 0.15 * 10) / 10;
 
@@ -2168,39 +2172,39 @@ class StorageService {
       General: '#64748b', // Slate
     };
 
-    const allTasks = this.getTasks();
-    const weekTasks = allTasks.filter((t) => t.date >= weekStart && t.date <= weekEnd);
-    const studyTasks = weekTasks.filter((t) => t.isStudySession && t.studySubject);
+    const studyTasks: Array<{ item: DailySummaryItem; date: string }> = [];
+    const dayCursor = new Date(monday);
+    for (let offset = 0; offset < 7; offset += 1) {
+      const dayKey = formatDateKey(dayCursor);
+      studyTasks.push(...this.getDayItems(dayKey)
+        .filter((item) => item.isStudySession && item.studySubject && item.completed)
+        .map((item) => ({ item, date: dayKey })));
+      dayCursor.setDate(dayCursor.getDate() + 1);
+    }
 
     // Map to aggregate stats
-    const map = new Map<
-      string,
-      {
-        minutes: number;
-        questionsAttempted: number;
-        questionsCorrect: number;
-        tasksCount: number;
-        topics: Set<string>;
-      }
-    >();
-
     if (studyTasks.length === 0) {
       return [];
     }
 
-    for (const task of studyTasks) {
+    const completedMinutes = aggregateCompletedStudyMinutes(studyTasks.map(({ item, date }) => ({
+      occurrenceId: `${item.id}_${date}`,
+      completed: item.completed,
+      subject: item.studySubject,
+      minutes: item.studyDurationMinutes,
+    })));
+    const map = new Map<string, { minutes: number; questionsAttempted: number; questionsCorrect: number; tasksCount: number; topics: Set<string> }>();
+
+    for (const { item: task } of studyTasks) {
       const subj = task.studySubject || 'General';
       const existing = map.get(subj) || {
-        minutes: 0,
+        minutes: completedMinutes.get(subj) || 0,
         questionsAttempted: 0,
         questionsCorrect: 0,
         tasksCount: 0,
         topics: new Set<string>(),
       };
 
-      if (task.studyDurationMinutes) {
-        existing.minutes += task.studyDurationMinutes;
-      }
       if (task.questionsAttempted) {
         existing.questionsAttempted += task.questionsAttempted;
         existing.questionsCorrect += task.questionsCorrect || 0;
@@ -2400,25 +2404,30 @@ class StorageService {
     let nightCount = 0; // 21:00 - 04:59
 
     const weekCompletedItems = weekAllDayItems.filter((i) => i.completed);
+    let timedCompletedCount = 0;
 
     weekCompletedItems.forEach((item) => {
-      const timeStr = item.dueTime || '09:00';
-      const hour = parseInt(timeStr.split(':')[0], 10) || 9;
+      if (!item.completedAt) return;
+      const completedDate = new Date(item.completedAt);
+      if (Number.isNaN(completedDate.getTime())) return;
+      const hourPart = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', hourCycle: 'h23' }).format(completedDate);
+      const hour = Number(hourPart);
+      timedCompletedCount += 1;
       if (hour >= 5 && hour < 12) morningCount++;
       else if (hour >= 12 && hour < 17) afternoonCount++;
       else if (hour >= 17 && hour < 21) eveningCount++;
       else nightCount++;
     });
 
-    if (morningCount >= afternoonCount && morningCount >= eveningCount) {
-      const morningPct = Math.round((morningCount / Math.max(1, weekCompletedItems.length)) * 100);
+    if (isUniqueMorningPeak([morningCount, afternoonCount, eveningCount, nightCount])) {
+      const morningPct = Math.round((morningCount / Math.max(1, timedCompletedCount)) * 100);
       insights.push({
         id: 'ins_morning_peak',
         type: 'time_of_day',
         icon: 'Sun',
         title: 'Morning Peak Performance',
         text: 'You complete more tasks in the morning.',
-        evidence: `${morningCount} of ${weekCompletedItems.length} completed tasks (${morningPct}%) were finished before 12:00 PM.`,
+        evidence: `${morningCount} of ${timedCompletedCount} completed tasks with a recorded completion time (${morningPct}%) were finished before 12:00 PM.`,
         category: 'strength',
       });
     }
@@ -2447,10 +2456,12 @@ class StorageService {
         id: 'ins_late_friction_fallback',
         type: 'postponed_tasks',
         icon: 'Moon',
-        title: 'Late Evening Task Friction',
-        text: 'You frequently postpone tasks scheduled after 9 PM.',
-        evidence: 'Tasks scheduled after 9:00 PM recorded an 80% drop-off rate across this review window.',
-        category: 'recommendation',
+        title: 'Late Evening Task Pattern',
+        text: lateTasks.length === 0
+          ? 'No tasks were scheduled after 9 PM in this review window.'
+          : 'There is not enough late evening data to identify a postponement pattern.',
+        evidence: `${lateIncomplete.length} of ${lateTasks.length} tasks scheduled after 9:00 PM were incomplete. At least 2 are needed to identify a pattern.`,
+        category: 'observation',
       });
     }
 
@@ -2479,8 +2490,14 @@ class StorageService {
         type: 'subject_imbalance',
         icon: 'Calculator',
         title: 'Subject Study Allocation',
-        text: 'Quant received less study time than other subjects.',
-        evidence: 'Quant logged 4h 10m vs 5h 20m in GK, with 70 fewer study minutes.',
+        text: quantObj && gkObj
+          ? 'Quant received as much or more study time than GK.'
+          : quantObj || gkObj
+          ? 'Log study time in both Quant and GK to compare allocation.'
+          : 'No Quant or GK study time was recorded in this review window.',
+        evidence: quantObj || gkObj
+          ? `Recorded study time: Quant ${quantObj?.formattedDuration || '0m'}, GK ${gkObj?.formattedDuration || '0m'}.`
+          : 'A comparison requires recorded study time in these subjects.',
         category: 'observation',
       });
     }
@@ -3183,100 +3200,9 @@ class StorageService {
 
     const currentUserId = this.getAuthenticatedUserId();
     const filtered = parsed.filter(
-      (s) => s && !s.id?.startsWith('foc_seed_') && (!s.userId || s.userId === currentUserId)
+      (s) => s && !s.id?.startsWith('foc_seed_') && !s.id?.startsWith('foc_yest_') && (!s.userId || s.userId === currentUserId)
     );
-
-    // Ensure yesterday has realistic completed study session history if empty
-    const todayIST = getCurrentIST().dateStr;
-    const yesterdayIST = addDaysToDateKey(todayIST, -1);
-    const yesterdaySessions = filtered.filter((s) => s.date === yesterdayIST);
-
-    if (yesterdaySessions.length === 0) {
-      const yesterdaySeed = this.getYesterdaySeedSessions(yesterdayIST, currentUserId);
-      const combined = [...yesterdaySeed, ...filtered];
-      try {
-        localStorage.setItem(STORAGE_KEYS.FOCUS_SESSIONS, JSON.stringify(combined.slice(0, 200)));
-      } catch {}
-      return combined;
-    }
-
     return filtered;
-  }
-
-  public getYesterdaySeedSessions(yesterdayStr: string, userId: string): FocusSession[] {
-    const userPrefix = (userId || 'usr').replace(/[^a-zA-Z0-9_-]/g, '_');
-    return [
-      {
-        id: `foc_yest_cgl_${userPrefix}_${yesterdayStr}`,
-        userId,
-        date: yesterdayStr,
-        taskTitle: 'CGL General Awareness: Indian Polity & Articles',
-        taskCategory: 'SSC CGL',
-        mode: '50/10',
-        targetFocusMinutes: 50,
-        actualSecondsSpent: 3000,
-        startedAt: `${yesterdayStr}T10:00:00.000Z`,
-        completedAt: `${yesterdayStr}T10:50:00.000Z`,
-        wasCompletedNaturally: true,
-        notes: 'Indian Constitution: Articles 1-51A & Major Amendments',
-      },
-      {
-        id: `foc_yest_quant_${userPrefix}_${yesterdayStr}`,
-        userId,
-        date: yesterdayStr,
-        taskTitle: 'Quant Practice: Percentage, Profit & Loss',
-        taskCategory: 'SSC CGL',
-        mode: '50/10',
-        targetFocusMinutes: 50,
-        actualSecondsSpent: 3000,
-        startedAt: `${yesterdayStr}T14:00:00.000Z`,
-        completedAt: `${yesterdayStr}T14:50:00.000Z`,
-        wasCompletedNaturally: true,
-        notes: 'Solved 45 Tier-1 practice questions with 90% accuracy',
-      },
-      {
-        id: `foc_yest_reasoning_${userPrefix}_${yesterdayStr}`,
-        userId,
-        date: yesterdayStr,
-        taskTitle: 'Logical Reasoning: Circular Seating & Puzzles',
-        taskCategory: 'SSC CGL',
-        mode: 'custom',
-        targetFocusMinutes: 45,
-        actualSecondsSpent: 2700,
-        startedAt: `${yesterdayStr}T17:00:00.000Z`,
-        completedAt: `${yesterdayStr}T17:45:00.000Z`,
-        wasCompletedNaturally: true,
-        notes: 'Completed 3 high-difficulty reasoning puzzle sets',
-      },
-      {
-        id: `foc_yest_english_${userPrefix}_${yesterdayStr}`,
-        userId,
-        date: yesterdayStr,
-        taskTitle: 'English Vocab & Reading Comprehension Drill',
-        taskCategory: 'English',
-        mode: 'custom',
-        targetFocusMinutes: 45,
-        actualSecondsSpent: 2700,
-        startedAt: `${yesterdayStr}T19:00:00.000Z`,
-        completedAt: `${yesterdayStr}T19:45:00.000Z`,
-        wasCompletedNaturally: true,
-        notes: 'The Hindu editorial analysis + 30 new vocab words',
-      },
-      {
-        id: `foc_yest_gs_revision_${userPrefix}_${yesterdayStr}`,
-        userId,
-        date: yesterdayStr,
-        taskTitle: 'Static GK & Modern History Spaced Revision',
-        taskCategory: 'SSC CGL',
-        mode: 'custom',
-        targetFocusMinutes: 35,
-        actualSecondsSpent: 2100,
-        startedAt: `${yesterdayStr}T21:00:00.000Z`,
-        completedAt: `${yesterdayStr}T21:35:00.000Z`,
-        wasCompletedNaturally: true,
-        notes: 'Freedom Struggle timeline & Governor-Generals revision',
-      },
-    ];
   }
 
   public saveFocusSession(session: FocusSession): void {
