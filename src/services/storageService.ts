@@ -1034,9 +1034,17 @@ class StorageService {
   }
 
   // --- QUICK NOTES / SCRATCHPAD ---
-  public getAllDailyNotes(): Record<string, string> {
+  private getDailyNotesStorageKey(userId = this.getAuthenticatedUserId()): string {
+    // Keep the original key for the local, unauthenticated profile. Signed-in
+    // users each get their own notes store on this browser.
+    return userId === 'usr_default'
+      ? STORAGE_KEYS.DAILY_NOTES
+      : `${STORAGE_KEYS.DAILY_NOTES}_${encodeURIComponent(userId)}`;
+  }
+
+  public getAllDailyNotes(userId?: string): Record<string, string> {
     if (typeof window === 'undefined') return {};
-    const data = localStorage.getItem(STORAGE_KEYS.DAILY_NOTES);
+    const data = localStorage.getItem(this.getDailyNotesStorageKey(userId));
     if (!data) return {};
     try {
       return JSON.parse(data);
@@ -1045,28 +1053,28 @@ class StorageService {
     }
   }
 
-  public getDailyNotes(dateStr: string): string {
-    const all = this.getAllDailyNotes();
+  public getDailyNotes(dateStr: string, userId?: string): string {
+    const all = this.getAllDailyNotes(userId);
     return all[dateStr] || '';
   }
 
-  public setDailyNotes(dateStr: string, notes: string): void {
+  public setDailyNotes(dateStr: string, notes: string, userId?: string): void {
     if (typeof window === 'undefined') return;
-    const all = this.getAllDailyNotes();
+    const all = this.getAllDailyNotes(userId);
     const trimmed = notes.trim();
     if (trimmed === '') {
       delete all[dateStr];
     } else {
       all[dateStr] = notes;
     }
-    localStorage.setItem(STORAGE_KEYS.DAILY_NOTES, JSON.stringify(all));
+    localStorage.setItem(this.getDailyNotesStorageKey(userId), JSON.stringify(all));
     window.dispatchEvent(
       new CustomEvent('habits:daily_notes_updated', { detail: { date: dateStr, notes } })
     );
   }
 
-  public saveDailyNotes(dateStr: string, notes: string): void {
-    this.setDailyNotes(dateStr, notes);
+  public saveDailyNotes(dateStr: string, notes: string, userId?: string): void {
+    this.setDailyNotes(dateStr, notes, userId);
   }
 
   public getDailyPriorities(dateStr: string): string[] {
@@ -1100,7 +1108,9 @@ class StorageService {
       localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
     }
 
-    this.syncWithServer();
+    // Persist priority changes immediately so they are available when the same
+    // account opens the app on another device.
+    this.syncWithServer(true);
     return capped;
   }
 
@@ -3131,6 +3141,7 @@ class StorageService {
   // --- SERVER SYNCHRONIZATION ---
   private syncDebounceTimer: any = null;
   private lastSyncedPayloadHash: string = '';
+  private syncRequestQueue: Promise<void> = Promise.resolve();
 
   public syncWithServer(immediate: boolean = false): void {
     if (typeof window === 'undefined') return;
@@ -3140,43 +3151,49 @@ class StorageService {
       this.syncDebounceTimer = null;
     }
 
-    const performSync = async () => {
-      try {
-        const payload = {
-          tasks: this.getTasks(),
-          habits: this.getHabits(),
-          habitCompletions: this.getHabitCompletions(),
-          taskCompletions: this.getTaskCompletions(),
-          focusSessions: this.getFocusSessions(),
-          dailyPriorities: this.getAllDailyPriorities(),
-          categories: this.getCategories(),
-        };
+    const performSync = () => {
+      const runSync = async () => {
+        try {
+          const payload = {
+            tasks: this.getTasks(),
+            habits: this.getHabits(),
+            habitCompletions: this.getHabitCompletions(),
+            taskCompletions: this.getTaskCompletions(),
+            focusSessions: this.getFocusSessions(),
+            dailyPriorities: this.getAllDailyPriorities(),
+            categories: this.getCategories(),
+          };
 
-        const serialized = JSON.stringify(payload);
-        // Dirty-check: if nothing changed since last successful sync, don't send request
-        if (!immediate && this.lastSyncedPayloadHash && this.lastSyncedPayloadHash === serialized) {
-          return;
+          const serialized = JSON.stringify(payload);
+          // Dirty-check: if nothing changed since last successful sync, don't send request
+          if (!immediate && this.lastSyncedPayloadHash && this.lastSyncedPayloadHash === serialized) {
+            return;
+          }
+
+          const syncStartTime = performance.now();
+          const res = await authenticatedFetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: serialized,
+            keepalive: true,
+          });
+
+          const syncDuration = Math.round(performance.now() - syncStartTime);
+
+          if (res.ok) {
+            this.lastSyncedPayloadHash = serialized;
+            console.info(`[StorageService] Background sync persisted to server in ${syncDuration}ms.`);
+          } else {
+            console.warn(`[StorageService] Background sync failed with HTTP ${res.status} (${syncDuration}ms).`);
+          }
+        } catch (err: any) {
+          console.warn('[StorageService] Background sync network error (handled):', err?.message || err);
         }
+      };
 
-        const syncStartTime = performance.now();
-        const res = await authenticatedFetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: serialized,
-          keepalive: true,
-        });
-
-        const syncDuration = Math.round(performance.now() - syncStartTime);
-
-        if (res.ok) {
-          this.lastSyncedPayloadHash = serialized;
-          console.info(`[StorageService] Background sync persisted to server in ${syncDuration}ms.`);
-        } else {
-          console.warn(`[StorageService] Background sync failed with HTTP ${res.status} (${syncDuration}ms).`);
-        }
-      } catch (err: any) {
-        console.warn('[StorageService] Background sync network error (handled):', err?.message || err);
-      }
+      // Keep writes ordered. A slower older request must not arrive after a
+      // newer Top 3 selection and restore the previous selection on another device.
+      this.syncRequestQueue = this.syncRequestQueue.then(runSync, runSync);
     };
 
     if (immediate) {

@@ -7,6 +7,7 @@ import { getCurrentIST } from '../utils/timeUtils';
 interface QuickNotesCardProps {
   selectedDate: string;
   todayDate: string;
+  userId: string;
 }
 
 // Debounce delay: Wait 60 seconds after user finishes typing before persisting to localStorage
@@ -15,9 +16,10 @@ const DEBOUNCE_DELAY_MS = 60000;
 export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   selectedDate,
   todayDate,
+  userId,
 }) => {
   const [quickNotes, setQuickNotes] = useState<string>(() =>
-    storageService.getDailyNotes(selectedDate)
+    storageService.getDailyNotes(selectedDate, userId)
   );
   const [notesSaveStatus, setNotesSaveStatus] = useState<'idle' | 'editing' | 'saving' | 'saved'>('idle');
   const [copiedNotes, setCopiedNotes] = useState(false);
@@ -37,24 +39,24 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
-      storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current);
+      storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current, userId);
     }
     selectedDateRef.current = selectedDate;
-    const notesForDate = storageService.getDailyNotes(selectedDate);
+    const notesForDate = storageService.getDailyNotes(selectedDate, userId);
     setQuickNotes(notesForDate);
     latestNotesRef.current = notesForDate;
     setNotesSaveStatus('idle');
-  }, [selectedDate]);
+  }, [selectedDate, userId]);
 
   // Flush pending changes on unmount
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
-        storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current);
+        storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current, userId);
       }
     };
-  }, []);
+  }, [userId]);
 
   // Reactive listener for storage updates
   useEffect(() => {
@@ -75,7 +77,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
       saveTimerRef.current = null;
     }
     setNotesSaveStatus('saving');
-    storageService.setDailyNotes(selectedDateRef.current, valToSave);
+    storageService.setDailyNotes(selectedDateRef.current, valToSave, userId);
     setTimeout(() => {
       setNotesSaveStatus('saved');
       setTimeout(() => setNotesSaveStatus('idle'), 2500);

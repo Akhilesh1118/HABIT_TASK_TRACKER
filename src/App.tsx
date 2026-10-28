@@ -147,11 +147,11 @@ export default function App() {
               name: data.user.name || 'User',
               role: data.user.role,
             });
-            setAuthState('authenticated');
             await storageService.loadFromServer();
             setUser(storageService.getUser());
             setHabits(storageService.getHabits());
             setRefreshTrigger((prev) => prev + 1);
+            setAuthState('authenticated');
           } else {
             clearAuthToken();
             storageService.clearUserData();
@@ -185,6 +185,7 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = useCallback(async (user: { email: string; userId: string; name?: string; role?: string }) => {
+    setAuthState('checking');
     setAuthUser(user);
     storageService.setCurrentUser({
       id: user.userId,
@@ -192,11 +193,11 @@ export default function App() {
       name: user.name || 'User',
       role: user.role,
     });
-    setAuthState('authenticated');
     await storageService.loadFromServer();
     setUser(storageService.getUser());
     setHabits(storageService.getHabits());
     setRefreshTrigger((prev) => prev + 1);
+    setAuthState('authenticated');
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -487,7 +488,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center gap-3 text-stone-600">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <p className="text-sm font-medium">Checking personal authentication...</p>
+        <p className="text-sm font-medium">Loading your personal tasks and priorities...</p>
       </div>
     );
   }
@@ -567,8 +568,10 @@ export default function App() {
 
               {/* Quick Notes for the selected date - fills the white space below the calendar */}
               <QuickNotesCard
+                key={authUser?.userId || storageService.getUser().id}
                 selectedDate={selectedDate}
                 todayDate={todayDate}
+                userId={authUser?.userId || storageService.getUser().id}
               />
             </div>
 
