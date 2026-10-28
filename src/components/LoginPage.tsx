@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Lock, Mail, User as UserIcon, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { setAuthToken } from '../utils/authClient';
 import { AppLogo } from './AppLogo';
@@ -18,6 +18,61 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lockoutSeconds, setLockoutSeconds] = useState<number>(0);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string | undefined;
+
+  const handleGoogleSignIn = useCallback(async (credential: string) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success || !data?.token || !data?.user) {
+        setErrorMessage(data?.error || 'Google sign-in could not be completed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      setAuthToken(data.token);
+      onLoginSuccess(data.user);
+    } catch {
+      setErrorMessage('Network error. Please check your connection and try again.');
+      setIsLoading(false);
+    }
+  }, [onLoginSuccess]);
+
+  useEffect(() => {
+    if (!googleClientId || mode !== 'login') return;
+    const initializeGoogleButton = () => {
+      const googleIdentity = (window as any).google?.accounts?.id;
+      if (!googleIdentity || !googleButtonRef.current) return;
+      googleIdentity.initialize({
+        client_id: googleClientId,
+        callback: (response: { credential?: string }) => {
+          if (response.credential) void handleGoogleSignIn(response.credential);
+        },
+      });
+      googleIdentity.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        shape: 'rectangular',
+        text: 'continue_with',
+        width: 320,
+      });
+    };
+
+    const googleScript = document.getElementById('google-identity-service');
+    if ((window as any).google?.accounts?.id) {
+      initializeGoogleButton();
+      return;
+    }
+    googleScript?.addEventListener('load', initializeGoogleButton);
+    return () => googleScript?.removeEventListener('load', initializeGoogleButton);
+  }, [googleClientId, handleGoogleSignIn, mode]);
 
   // Active countdown timer when rate limit cooldown is active
   useEffect(() => {
@@ -60,10 +115,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     try {
       const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const payload =
-        mode === 'register'
-          ? { email: trimmedEmail, password, name: name.trim() || 'User' }
-          : { email: trimmedEmail, password, rememberMe };
+      const payload = mode === 'register'
+        ? { email: trimmedEmail, password, name: name.trim() || 'User' }
+        : { email: trimmedEmail, password, rememberMe };
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -100,8 +154,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             ? 'A server error occurred. Please try again later.'
             : mode === 'register'
             ? 'Failed to create account. Please check your information.'
-            : 'Invalid email or password. Please try again.';
-        setErrorMessage(data?.error || fallbackMsg);
+            : 'Incorrect email or password. Please try again.';
+        const credentialError = mode === 'login' && response.status === 401
+          ? 'Incorrect email or password. Please try again.'
+          : null;
+        setErrorMessage(credentialError || data?.error || fallbackMsg);
         setIsLoading(false);
         return;
       }
@@ -281,7 +338,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
 
             {mode === 'login' && (
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -309,6 +366,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
+
+          {mode === 'login' && (
+            <div className="mt-5">
+              <div className="flex items-center gap-3 mb-4 text-[11px] text-stone-400">
+                <span className="h-px flex-1 bg-stone-200" />
+                <span>OR CONTINUE WITH</span>
+                <span className="h-px flex-1 bg-stone-200" />
+              </div>
+              {googleClientId ? (
+                <div ref={googleButtonRef} className="flex justify-center min-h-10" />
+              ) : (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setErrorMessage('Google sign-in is not configured yet. Add your Google Web Client ID as GOOGLE_CLIENT_ID and VITE_GOOGLE_CLIENT_ID, then restart the app.')}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-stone-300 bg-white text-stone-700 text-sm font-medium hover:bg-stone-50 cursor-pointer"
+                    title="Configure Google OAuth to enable sign-in"
+                  >
+                    <span className="font-bold text-base">G</span>
+                    Continue with Google
+                  </button>
+                  <p className="mt-2 text-[11px] text-stone-400">
+                    Configure a Google Web Client ID to enable sign-in.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-6 pt-4 border-t border-stone-100 text-center">
             <p className="text-xs text-stone-400">

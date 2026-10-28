@@ -28,6 +28,7 @@ interface DatabaseSchema {
   focusSessions?: (FocusSession & { userId?: string })[];
   dailyPriorities?: Record<string, string[]>;
   dailyPrioritiesByUser?: Record<string, Record<string, string[]>>;
+  dailyNotesByUser?: Record<string, Record<string, string>>;
   categories?: (CategoryItem & { userId: string })[];
   users?: DbUserAuth[];
   userAuth?: {
@@ -681,6 +682,20 @@ export class DbService {
     const mergedPriorities = mergeDailyPriorities(this.data.dailyPrioritiesByUser[userId], priorities);
     if (JSON.stringify(mergedPriorities) === JSON.stringify(this.data.dailyPrioritiesByUser[userId] || {})) return;
     this.data.dailyPrioritiesByUser[userId] = mergedPriorities;
+    this.persistData();
+  }
+
+  public getUserDailyNotes(userId: string): Record<string, string> {
+    this.reloadIfDiskExists();
+    return this.data.dailyNotesByUser?.[userId] || {};
+  }
+
+  public syncUserDailyNotes(userId: string, notes: Record<string, string>): void {
+    this.reloadIfDiskExists();
+    if (!this.data.dailyNotesByUser) this.data.dailyNotesByUser = {};
+    const mergedNotes = { ...(this.data.dailyNotesByUser[userId] || {}), ...notes };
+    if (JSON.stringify(mergedNotes) === JSON.stringify(this.data.dailyNotesByUser[userId] || {})) return;
+    this.data.dailyNotesByUser[userId] = mergedNotes;
     this.persistData();
   }
 

@@ -70,6 +70,21 @@ authRouter.post('/login', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/auth/google - verify a Google credential and issue this app's session
+authRouter.post('/google', async (req: Request, res: Response) => {
+  try {
+    const result = await authService.loginWithGoogle(req.body?.credential);
+    if (!result.success || !result.token) {
+      return res.status(401).json({ success: false, error: result.error || 'Google sign-in failed.' });
+    }
+    res.cookie('auth_token', result.token, getAuthCookieOptions(true));
+    return res.json({ success: true, user: result.user, token: result.token });
+  } catch (err: any) {
+    console.error('[Auth API] Google sign-in error:', err?.message);
+    return res.status(500).json({ success: false, error: 'Google sign-in could not be completed. Please try again.' });
+  }
+});
+
 // POST /api/auth/logout
 authRouter.post('/logout', (_req: Request, res: Response) => {
   const isProduction = process.env.NODE_ENV === 'production';

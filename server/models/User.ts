@@ -51,6 +51,11 @@ const UserSchema: Schema = new Schema(
       type: Schema.Types.Mixed,
       default: {},
     },
+    // Quick Notes belong to the account and are indexed by YYYY-MM-DD.
+    dailyNotes: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,

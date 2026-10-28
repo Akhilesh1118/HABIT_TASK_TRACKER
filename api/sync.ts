@@ -12,7 +12,7 @@ import {
 } from '../server/models/HabitData.ts';
 import { verifyRequestAuth } from '../server/middleware/authMiddleware.ts';
 import { UserModel } from '../server/models/User.ts';
-import { validateSyncCompletionDates, validateTaskCompletionSync } from '../server/utils/dateValidation.ts';
+import { isValidDateKey, validateSyncCompletionDates, validateTaskCompletionSync } from '../server/utils/dateValidation.ts';
 import { isValidDailyPriorities } from '../server/utils/dailyPriorities.ts';
 import type { Task, Habit, HabitCompletion, TaskCompletion, FocusSession, CategoryItem } from '../src/types.ts';
 
@@ -99,6 +99,7 @@ export default async function handler(req: Request, res: Response) {
       let taskCompletions: TaskCompletion[] = [];
       let focusSessions: FocusSession[] = [];
       let dailyPriorities: Record<string, string[]> = {};
+      let dailyNotes: Record<string, string> = {};
       let categories: CategoryItem[] = [];
 
       if (isMongoConnected()) {
@@ -224,10 +225,12 @@ export default async function handler(req: Request, res: Response) {
       }
 
       if (isMongoConnected()) {
-        const priorityOwner = await UserModel.findById(userId).select('dailyPriorities').lean() as any;
+        const priorityOwner = await UserModel.findById(userId).select('dailyPriorities dailyNotes').lean() as any;
         dailyPriorities = priorityOwner?.dailyPriorities || dbService.getUserDailyPriorities(userId);
+        dailyNotes = priorityOwner?.dailyNotes || dbService.getUserDailyNotes(userId);
       } else if (!process.env.VERCEL) {
         dailyPriorities = dbService.getUserDailyPriorities(userId);
+        dailyNotes = dbService.getUserDailyNotes(userId);
       }
 
       return res.status(200).json({
@@ -238,7 +241,9 @@ export default async function handler(req: Request, res: Response) {
         taskCompletions,
         focusSessions,
         ...(isMongoConnected() || !process.env.VERCEL ? { dailyPriorities } : {}),
+        ...(isMongoConnected() || !process.env.VERCEL ? { dailyNotes } : {}),
         dailyPrioritiesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
+        dailyNotesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
         categories,
         source: isMongoConnected() ? 'mongodb_atlas' : 'local_fallback',
       });
@@ -269,11 +274,11 @@ export default async function handler(req: Request, res: Response) {
 
       return res.status(400).json({
         success: false,
-        error: 'Invalid or missing sync payload. Expected JSON object with tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, or categories.',
+        error: 'Invalid or missing sync payload. Expected JSON object with tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, dailyNotes, or categories.',
       });
     }
 
-    const { tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories } = body;
+    const { tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, dailyNotes, categories } = body;
 
     const hasTasks = Array.isArray(tasks);
     const hasHabits = Array.isArray(habits);
@@ -281,10 +286,11 @@ export default async function handler(req: Request, res: Response) {
     const hasTaskCompletions = Array.isArray(taskCompletions);
     const hasFocus = Array.isArray(focusSessions);
     const hasPriorities = dailyPriorities !== undefined && typeof dailyPriorities === 'object' && !Array.isArray(dailyPriorities);
+    const hasNotes = dailyNotes !== undefined && typeof dailyNotes === 'object' && !Array.isArray(dailyNotes);
     const hasCategories = Array.isArray(categories);
 
     // Protect against payloads that have no recognizable sync fields
-    if (!hasTasks && !hasHabits && !hasCompletions && !hasTaskCompletions && !hasFocus && !hasPriorities && !hasCategories) {
+    if (!hasTasks && !hasHabits && !hasCompletions && !hasTaskCompletions && !hasFocus && !hasPriorities && !hasNotes && !hasCategories) {
       const safeUserId = userId ? `${userId.slice(0, 8)}...` : 'unknown';
       console.warn('[Sync API POST Validation Failed: No recognized sync fields]', {
         method: req.method,
@@ -295,11 +301,14 @@ export default async function handler(req: Request, res: Response) {
 
       return res.status(400).json({
         success: false,
-        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories) must be provided.',
+        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, dailyNotes, categories) must be provided.',
       });
     }
     if (hasPriorities && !isValidDailyPriorities(dailyPriorities)) {
       return res.status(400).json({ success: false, error: 'Daily priorities must map valid YYYY-MM-DD dates to arrays of up to three task IDs.' });
+    }
+    if (hasNotes && !Object.entries(dailyNotes).every(([date, notes]) => isValidDateKey(date) && typeof notes === 'string')) {
+      return res.status(400).json({ success: false, error: 'Daily notes must map valid YYYY-MM-DD dates to text.' });
     }
 
     const todayIST = getTodayISTStr();
@@ -435,17 +444,34 @@ export default async function handler(req: Request, res: Response) {
           }
         }
 
-        if (hasPriorities) {
-          await UserModel.updateOne({ _id: userId }, [{
+      } catch (mongoErr: any) {
+        console.warn('[Vercel Sync POST Warning] MongoDB sync:', mongoErr?.message);
+      }
+    }
+
+    let dailyPrioritiesPersisted = false;
+    if (hasPriorities) {
+      if (isMongoConnected()) {
+        try {
+          const writeResult = await UserModel.updateOne({ _id: userId }, [{
             $set: {
               dailyPriorities: {
-                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, dailyPriorities],
+                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, { $literal: dailyPriorities }],
               },
             },
           }]);
+          if (!writeResult.acknowledged || writeResult.matchedCount < 1) {
+            return res.status(404).json({ success: false, dailyPrioritiesPersisted: false, error: 'Account not found while saving Today’s Top 3.' });
+          }
+          dailyPrioritiesPersisted = true;
+        } catch (priorityErr: any) {
+          console.error('[Vercel Sync API] Failed to persist Today’s Top 3 to MongoDB:', priorityErr?.message);
+          return res.status(500).json({ success: false, dailyPrioritiesPersisted: false, error: 'Today’s Top 3 could not be saved to the account database.' });
         }
-      } catch (mongoErr: any) {
-        console.warn('[Vercel Sync POST Warning] MongoDB sync:', mongoErr?.message);
+      } else if (process.env.MONGODB_URI?.trim() || process.env.VERCEL) {
+        return res.status(503).json({ success: false, dailyPrioritiesPersisted: false, error: 'The account database is temporarily unavailable.' });
+      } else {
+        dailyPrioritiesPersisted = true;
       }
     }
 
@@ -455,8 +481,37 @@ export default async function handler(req: Request, res: Response) {
     if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
     if (hasTaskCompletions) syncPayload.taskCompletions = taskCompletions;
     if (hasFocus) syncPayload.focusSessions = focusSessions;
-    const prioritiesPersisted = Boolean(isMongoConnected() || !process.env.VERCEL);
-    if (hasPriorities && prioritiesPersisted) syncPayload.dailyPriorities = dailyPriorities;
+    let dailyNotesPersisted = false;
+    if (hasNotes) {
+      if (isMongoConnected()) {
+        try {
+          // Merge the per-date map atomically. Dynamic dotted paths under a
+          // Mixed field can be cast/stripped differently across Mongoose
+          // versions, which made saves appear successful without persisting.
+          const writeResult = await UserModel.updateOne({ _id: userId }, [{
+            $set: {
+              dailyNotes: {
+                $mergeObjects: [{ $ifNull: ['$dailyNotes', {}] }, { $literal: dailyNotes }],
+              },
+            },
+          }]);
+          if (!writeResult.acknowledged || writeResult.matchedCount < 1) {
+            return res.status(404).json({ success: false, dailyNotesPersisted: false, error: 'Account not found while saving Quick Notes.' });
+          }
+          dailyNotesPersisted = true;
+        } catch (notesErr: any) {
+          console.error('[Vercel Sync API] Failed to persist Quick Notes to MongoDB:', notesErr?.message);
+          return res.status(500).json({ success: false, dailyNotesPersisted: false, error: 'Quick Notes could not be saved to the account database.' });
+        }
+      } else if (process.env.MONGODB_URI?.trim() || process.env.VERCEL) {
+        return res.status(503).json({ success: false, dailyNotesPersisted: false, error: 'The account database is temporarily unavailable.' });
+      } else {
+        dailyNotesPersisted = true;
+      }
+      if (dailyNotesPersisted) dbService.syncUserDailyNotes(userId, dailyNotes);
+    }
+
+    if (hasPriorities && dailyPrioritiesPersisted) syncPayload.dailyPriorities = dailyPriorities;
 
     if (hasFocus) dbService.syncFocusSessions(focusSessions, userId);
     if (hasCategories) dbService.saveCategories(userId, categories);
@@ -467,7 +522,8 @@ export default async function handler(req: Request, res: Response) {
       success: true,
       syncedAt: new Date().toISOString(),
       changed: result.changed,
-      dailyPrioritiesPersisted: prioritiesPersisted,
+      dailyPrioritiesPersisted,
+      dailyNotesPersisted,
       counts: {
         tasks: result.tasksCount,
         habits: result.habitsCount,

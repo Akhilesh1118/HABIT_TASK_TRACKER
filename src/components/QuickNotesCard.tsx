@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StickyNote, Check, Copy, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { StickyNote, Check, Copy, Trash2, ChevronDown, ChevronUp, Clock3, List, SquareCheck } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { formatFriendlyDate } from '../utils/calendarUtils';
 import { getCurrentIST } from '../utils/timeUtils';
@@ -10,8 +10,8 @@ interface QuickNotesCardProps {
   userId: string;
 }
 
-// Debounce delay: Wait 60 seconds after user finishes typing before persisting to localStorage
-const DEBOUNCE_DELAY_MS = 60000;
+// Save one minute after typing stops so notes appear on the user's other devices.
+const DEBOUNCE_DELAY_MS = 60_000;
 
 export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   selectedDate,
@@ -21,7 +21,6 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   const [quickNotes, setQuickNotes] = useState<string>(() =>
     storageService.getDailyNotes(selectedDate, userId)
   );
-  const [notesSaveStatus, setNotesSaveStatus] = useState<'idle' | 'editing' | 'saving' | 'saved'>('idle');
   const [copiedNotes, setCopiedNotes] = useState(false);
   const [isNotesExpanded, setIsNotesExpanded] = useState(true);
 
@@ -40,12 +39,12 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
       storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current, userId);
+      void storageService.syncDailyNotesToServer(userId, selectedDateRef.current, latestNotesRef.current);
     }
     selectedDateRef.current = selectedDate;
     const notesForDate = storageService.getDailyNotes(selectedDate, userId);
     setQuickNotes(notesForDate);
     latestNotesRef.current = notesForDate;
-    setNotesSaveStatus('idle');
   }, [selectedDate, userId]);
 
   // Flush pending changes on unmount
@@ -54,6 +53,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current, userId);
+        void storageService.syncDailyNotesToServer(userId, selectedDateRef.current, latestNotesRef.current);
       }
     };
   }, [userId]);
@@ -61,7 +61,8 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   // Reactive listener for storage updates
   useEffect(() => {
     const handleNotesUpdated = (e: any) => {
-      if (e?.detail?.date === selectedDate && notesSaveStatus !== 'editing') {
+      if (e?.detail?.date === selectedDate && e?.detail?.userId === userId) {
+        latestNotesRef.current = e.detail.notes || '';
         setQuickNotes(e.detail.notes || '');
       }
     };
@@ -69,27 +70,26 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     return () => {
       window.removeEventListener('habits:daily_notes_updated', handleNotesUpdated);
     };
-  }, [selectedDate, notesSaveStatus]);
+  }, [selectedDate, userId]);
 
-  const flushSave = (valToSave = latestNotesRef.current) => {
+  const flushSave = async (valToSave = latestNotesRef.current) => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    setNotesSaveStatus('saving');
     storageService.setDailyNotes(selectedDateRef.current, valToSave, userId);
-    setTimeout(() => {
-      setNotesSaveStatus('saved');
-      setTimeout(() => setNotesSaveStatus('idle'), 2500);
-    }, 350);
+    const dateToSave = selectedDateRef.current;
+    await storageService.syncDailyNotesToServer(userId, dateToSave, valToSave);
   };
 
   const handleNotesChange = (val: string) => {
     setQuickNotes(val);
     latestNotesRef.current = val;
-    setNotesSaveStatus('editing');
+    // Persist locally immediately, then sync to the account after one minute
+    // without typing.
+    storageService.setDailyNotes(selectedDateRef.current, val, userId);
 
-    // Clear existing timer and wait 60 seconds after user finishes typing thoughts
+    // Reset the one-minute autosave countdown while the user is typing.
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
@@ -152,32 +152,6 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center space-x-1.5">
-          {notesSaveStatus === 'editing' && (
-            <span className="inline-flex items-center space-x-1.5 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>Autosaves after 60s pause</span>
-              <button
-                type="button"
-                onClick={() => flushSave()}
-                className="underline font-bold text-amber-900 hover:text-amber-950 ml-0.5 cursor-pointer"
-                title="Save thoughts right now"
-              >
-                Save now
-              </button>
-            </span>
-          )}
-          {notesSaveStatus === 'saving' && (
-            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full animate-pulse">
-              Saving...
-            </span>
-          )}
-          {notesSaveStatus === 'saved' && (
-            <span className="inline-flex items-center space-x-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              <Check className="w-3 h-3 text-emerald-600" />
-              <span>Saved</span>
-            </span>
-          )}
-
           {quickNotes.trim().length > 0 && (
             <>
               <button
@@ -229,12 +203,6 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               id="daily-quick-notes-textarea"
               value={quickNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                  e.preventDefault();
-                  flushSave();
-                }
-              }}
               placeholder="Jot down quick thoughts, phone numbers, review checkpoints, or daily reflections for this date..."
               rows={4}
               className="w-full p-3 text-xs sm:text-sm font-medium text-stone-800 placeholder:text-stone-400 bg-stone-50/50 hover:bg-white focus:bg-white rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-stone-900 transition-all resize-y min-h-[100px] leading-relaxed shadow-2xs font-mono sm:font-sans"
@@ -251,26 +219,29 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
                   const now = getCurrentIST();
                   handleInsertSnippet(`[${now.timeStr}] `);
                 }}
-                className="px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
                 title="Insert current IST timestamp"
               >
-                ⏱️ Time
+                <Clock3 className="w-3 h-3" />
+                <span>Time</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleInsertSnippet('• ')}
-                className="px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
                 title="Insert bullet point"
               >
-                • Bullet
+                <List className="w-3 h-3" />
+                <span>Bullet</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleInsertSnippet('[ ] ')}
-                className="px-2 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
                 title="Insert checkbox"
               >
-                ☑ Checkbox
+                <SquareCheck className="w-3 h-3" />
+                <span>Checkbox</span>
               </button>
             </div>
 
@@ -278,7 +249,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               <span>
                 {quickNotes.trim() ? quickNotes.trim().split(/\s+/).length : 0} words
               </span>
-              <span>•</span>
+              <span className="w-1 h-1 rounded-full bg-stone-300" aria-hidden="true" />
               <span>{quickNotes.length} chars</span>
             </div>
           </div>
@@ -287,3 +258,4 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     </div>
   );
 };
+

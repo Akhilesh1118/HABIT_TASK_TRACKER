@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/authMiddleware.ts';
 import { TaskModel, HabitModel, HabitCompletionModel, TaskCompletionModel, FocusSessionModel, UserCategoryModel } from '../models/HabitData.ts';
 import { UserModel } from '../models/User.ts';
-import { validateSyncCompletionDates, validateTaskCompletionSync } from '../utils/dateValidation.ts';
+import { isValidDateKey, validateSyncCompletionDates, validateTaskCompletionSync } from '../utils/dateValidation.ts';
 import { isValidDailyPriorities } from '../utils/dailyPriorities.ts';
 import { dbService, getTodayISTStr } from '../services/dbService.ts';
 import { isMongoConnected } from '../services/mongoService.ts';
@@ -21,6 +21,7 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
     let taskCompletions: TaskCompletion[] = [];
     let focusSessions: FocusSession[] = [];
     let dailyPriorities: Record<string, string[]> = {};
+    let dailyNotes: Record<string, string> = {};
     let categories: CategoryItem[] = [];
 
     if (isMongoConnected()) {
@@ -138,10 +139,12 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
     }
 
     if (isMongoConnected()) {
-      const priorityOwner = await UserModel.findById(userId).select('dailyPriorities').lean() as any;
+      const priorityOwner = await UserModel.findById(userId).select('dailyPriorities dailyNotes').lean() as any;
       dailyPriorities = priorityOwner?.dailyPriorities || dbService.getUserDailyPriorities(userId);
+      dailyNotes = priorityOwner?.dailyNotes || dbService.getUserDailyNotes(userId);
     } else if (!process.env.VERCEL) {
       dailyPriorities = dbService.getUserDailyPriorities(userId);
+      dailyNotes = dbService.getUserDailyNotes(userId);
     }
 
     return res.json({
@@ -152,7 +155,9 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       taskCompletions,
       focusSessions,
       ...(isMongoConnected() || !process.env.VERCEL ? { dailyPriorities } : {}),
+      ...(isMongoConnected() || !process.env.VERCEL ? { dailyNotes } : {}),
       dailyPrioritiesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
+      dailyNotesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
       categories,
       source: isMongoConnected() ? 'mongodb' : 'local_fallback',
     });
@@ -196,7 +201,7 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
-    const { tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories } = body;
+    const { tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, dailyNotes, categories } = body;
 
     const hasTasks = Array.isArray(tasks);
     const hasHabits = Array.isArray(habits);
@@ -204,16 +209,20 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     const hasTaskCompletions = Array.isArray(taskCompletions);
     const hasFocus = Array.isArray(focusSessions);
     const hasPriorities = dailyPriorities !== undefined && typeof dailyPriorities === 'object' && !Array.isArray(dailyPriorities);
+    const hasNotes = dailyNotes !== undefined && typeof dailyNotes === 'object' && !Array.isArray(dailyNotes);
     const hasCategories = Array.isArray(categories);
 
-    if (!hasTasks && !hasHabits && !hasCompletions && !hasTaskCompletions && !hasFocus && !hasPriorities && !hasCategories) {
+    if (!hasTasks && !hasHabits && !hasCompletions && !hasTaskCompletions && !hasFocus && !hasPriorities && !hasNotes && !hasCategories) {
       return res.status(400).json({
         success: false,
-        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, categories) must be provided.',
+        error: 'Malformed sync payload: at least one valid array/field (tasks, habits, habitCompletions, taskCompletions, focusSessions, dailyPriorities, dailyNotes, categories) must be provided.',
       });
     }
     if (hasPriorities && !isValidDailyPriorities(dailyPriorities)) {
       return res.status(400).json({ success: false, error: 'Daily priorities must map valid YYYY-MM-DD dates to arrays of up to three task IDs.' });
+    }
+    if (hasNotes && !Object.entries(dailyNotes).every(([date, notes]) => isValidDateKey(date) && typeof notes === 'string')) {
+      return res.status(400).json({ success: false, error: 'Daily notes must map valid YYYY-MM-DD dates to text.' });
     }
 
     const todayIST = getTodayISTStr();
@@ -364,18 +373,66 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
           }
         }
 
-        if (hasPriorities) {
-          await UserModel.updateOne({ _id: userId }, [{
-            $set: {
-              dailyPriorities: {
-                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, dailyPriorities],
-              },
-            },
-          }]);
-        }
       } catch (mongoErr: any) {
         console.warn('[SyncRoutes] Authoritative MongoDB sync warning:', mongoErr?.message);
       }
+    }
+
+    let dailyPrioritiesPersisted = false;
+    if (hasPriorities) {
+      if (isMongoConnected()) {
+        try {
+          const writeResult = await UserModel.updateOne({ _id: userId }, [{
+            $set: {
+              dailyPriorities: {
+                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, { $literal: dailyPriorities }],
+              },
+            },
+          }]);
+          if (!writeResult.acknowledged || writeResult.matchedCount < 1) {
+            return res.status(404).json({ success: false, dailyPrioritiesPersisted: false, error: 'Account not found while saving Today’s Top 3.' });
+          }
+          dailyPrioritiesPersisted = true;
+        } catch (priorityErr: any) {
+          console.error('[SyncRoutes] Failed to persist Today’s Top 3 to MongoDB:', priorityErr?.message);
+          return res.status(500).json({ success: false, dailyPrioritiesPersisted: false, error: 'Today’s Top 3 could not be saved to the account database.' });
+        }
+      } else if (process.env.MONGODB_URI?.trim() || process.env.VERCEL) {
+        return res.status(503).json({ success: false, dailyPrioritiesPersisted: false, error: 'The account database is temporarily unavailable.' });
+      } else {
+        dailyPrioritiesPersisted = true;
+      }
+    }
+
+    let dailyNotesPersisted = false;
+    if (hasNotes) {
+      if (isMongoConnected()) {
+        try {
+          // Merge the per-date map atomically. Dynamic dotted paths under a
+          // Mixed field can be cast/stripped differently across Mongoose
+          // versions, which made saves appear successful without persisting.
+          const writeResult = await UserModel.updateOne({ _id: userId }, [{
+            $set: {
+              dailyNotes: {
+                $mergeObjects: [{ $ifNull: ['$dailyNotes', {}] }, { $literal: dailyNotes }],
+              },
+            },
+          }]);
+          if (!writeResult.acknowledged || writeResult.matchedCount < 1) {
+            return res.status(404).json({ success: false, dailyNotesPersisted: false, error: 'Account not found while saving Quick Notes.' });
+          }
+          dailyNotesPersisted = true;
+        } catch (notesErr: any) {
+          console.error('[SyncRoutes] Failed to persist Quick Notes to MongoDB:', notesErr?.message);
+          return res.status(500).json({ success: false, dailyNotesPersisted: false, error: 'Quick Notes could not be saved to the account database.' });
+        }
+      } else if (process.env.MONGODB_URI?.trim() || process.env.VERCEL) {
+        return res.status(503).json({ success: false, dailyNotesPersisted: false, error: 'The account database is temporarily unavailable.' });
+      } else {
+        dailyNotesPersisted = true;
+      }
+
+      if (dailyNotesPersisted) dbService.syncUserDailyNotes(userId, dailyNotes);
     }
 
     // 2. Also keep dbService in sync
@@ -384,8 +441,7 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     if (hasHabits) syncPayload.habits = habits;
     if (hasCompletions) syncPayload.habitCompletions = habitCompletions;
     if (hasTaskCompletions) syncPayload.taskCompletions = taskCompletions;
-    const prioritiesPersisted = Boolean(isMongoConnected() || !process.env.VERCEL);
-    if (hasPriorities && prioritiesPersisted) syncPayload.dailyPriorities = dailyPriorities;
+    if (hasPriorities && dailyPrioritiesPersisted) syncPayload.dailyPriorities = dailyPriorities;
     if (hasFocus) {
       dbService.syncFocusSessions(focusSessions, userId);
     }
@@ -399,7 +455,8 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       success: true,
       syncedAt: new Date().toISOString(),
       changed: result.changed,
-      dailyPrioritiesPersisted: prioritiesPersisted,
+      dailyPrioritiesPersisted,
+      dailyNotesPersisted,
       counts: {
         tasks: result.tasksCount,
         habits: result.habitsCount,

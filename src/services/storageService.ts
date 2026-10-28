@@ -199,6 +199,7 @@ class StorageService {
   public setCurrentUser(user: { id: string; email: string; name?: string; role?: string }): User {
     const current = this.getUser();
     if (current.id && current.id !== user.id && typeof window !== 'undefined') {
+      this.lastSyncedPayloadHash = '';
       localStorage.removeItem(STORAGE_KEYS.TASKS);
       localStorage.removeItem(STORAGE_KEYS.HABITS);
       localStorage.removeItem(STORAGE_KEYS.HABIT_COMPLETIONS);
@@ -1061,20 +1062,49 @@ class StorageService {
   public setDailyNotes(dateStr: string, notes: string, userId?: string): void {
     if (typeof window === 'undefined') return;
     const all = this.getAllDailyNotes(userId);
-    const trimmed = notes.trim();
-    if (trimmed === '') {
-      delete all[dateStr];
-    } else {
-      all[dateStr] = notes;
-    }
+    // Keep an empty-string tombstone so clearing a note syncs to other devices.
+    all[dateStr] = notes.trim() === '' ? '' : notes;
     localStorage.setItem(this.getDailyNotesStorageKey(userId), JSON.stringify(all));
     window.dispatchEvent(
-      new CustomEvent('habits:daily_notes_updated', { detail: { date: dateStr, notes } })
+      new CustomEvent('habits:daily_notes_updated', {
+        detail: { date: dateStr, notes, userId: userId || this.getAuthenticatedUserId() },
+      })
     );
   }
 
   public saveDailyNotes(dateStr: string, notes: string, userId?: string): void {
     this.setDailyNotes(dateStr, notes, userId);
+  }
+
+  private dailyNotesSyncQueue: Promise<boolean> = Promise.resolve(true);
+
+  public syncDailyNotesToServer(userId: string, dateStr: string, notes: string): Promise<boolean> {
+    if (typeof window === 'undefined' || !userId || userId === 'usr_default') return Promise.resolve(false);
+
+    const save = async (): Promise<boolean> => {
+      // Never send notes using a different account's current auth token.
+      if (this.getAuthenticatedUserId() !== userId) return false;
+      try {
+        const response = await authenticatedFetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // Send only the date being edited. Sending a whole browser-local
+          // snapshot can overwrite newer notes from another device.
+          body: JSON.stringify({ dailyNotes: { [dateStr]: notes } }),
+          keepalive: true,
+        });
+        if (!response.ok) return false;
+        const result = await response.json();
+        return Boolean(result.success && result.dailyNotesPersisted);
+      } catch (err: any) {
+        console.warn('[StorageService] Quick Notes sync failed:', err?.message || err);
+        return false;
+      }
+    };
+
+    const queuedSave = this.dailyNotesSyncQueue.then(save, save);
+    this.dailyNotesSyncQueue = queuedSave.catch(() => false);
+    return queuedSave;
   }
 
   public getDailyPriorities(dateStr: string): string[] {
@@ -3022,6 +3052,19 @@ class StorageService {
           if (data.dailyPriorities && typeof data.dailyPriorities === 'object') {
             localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(data.dailyPriorities));
           }
+          if (data.dailyNotesPersisted === true && data.dailyNotes && typeof data.dailyNotes === 'object' && !Array.isArray(data.dailyNotes)) {
+            const userId = this.getAuthenticatedUserId();
+            const localNotes = this.getAllDailyNotes(userId);
+            const serverNotes = data.dailyNotes as Record<string, string>;
+            // The account database is authoritative after login. Never import
+            // browser-only dates here: they may be stale notes from another
+            // account session and can overwrite another device's state.
+            localStorage.setItem(this.getDailyNotesStorageKey(userId), JSON.stringify(serverNotes));
+            const dates = new Set([...Object.keys(localNotes), ...Object.keys(serverNotes)]);
+            dates.forEach((date) => window.dispatchEvent(new CustomEvent('habits:daily_notes_updated', {
+              detail: { date, notes: serverNotes[date] || '', userId },
+            })));
+          }
           // Save user categories sent from authoritative database for this user
           if (Array.isArray(data.categories) && data.categories.length > 0) {
             const catKey = this.getCategoryStorageKey();
@@ -3122,6 +3165,7 @@ class StorageService {
 
   public clearUserData(): void {
     if (typeof window === 'undefined') return;
+    this.lastSyncedPayloadHash = '';
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.TASKS);
     localStorage.removeItem(STORAGE_KEYS.HABITS);

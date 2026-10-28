@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'node:crypto';
 import { connectToDatabase, isMongoConnected } from './mongoService.ts';
 import { UserModel, type UserRole } from '../models/User.ts';
 import { UserCategoryModel } from '../models/HabitData.ts';
@@ -449,6 +450,73 @@ class AuthService {
     };
   }
 
+  /** Verify a Google ID token and sign in or create the matching account. */
+  public async loginWithGoogle(credential: string): Promise<AuthResult> {
+    // GOOGLE_CLIENT_ID is the explicit server setting. Accept the Vite client
+    // setting as a fallback because it is the same public OAuth Web Client ID.
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || process.env.VITE_GOOGLE_CLIENT_ID?.trim();
+    if (!clientId) return { success: false, error: 'Google sign-in is not configured. Please contact the administrator.' };
+    if (!credential) return { success: false, error: 'Google sign-in could not be verified.' };
+
+    const verificationResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    if (!verificationResponse.ok) return { success: false, error: 'Google sign-in could not be verified. Please try again.' };
+    const claims = await verificationResponse.json() as { aud?: string; email?: string; email_verified?: boolean | string; name?: string; exp?: string };
+    if (claims.aud !== clientId || !claims.email || !(claims.email_verified === true || claims.email_verified === 'true') ||
+      (claims.exp && Number(claims.exp) * 1000 <= Date.now())) {
+      return { success: false, error: 'Google sign-in could not be verified. Please try again.' };
+    }
+
+    const email = claims.email.toLowerCase().trim();
+    let existingUser: { id: string; email: string; name?: string; role?: UserRole } | null = null;
+    const mongoConfigured = Boolean(process.env.MONGODB_URI?.trim());
+    await connectToDatabase();
+    if (mongoConfigured && !isMongoConnected()) {
+      return { success: false, error: 'The account database is temporarily unavailable. Please try again shortly.' };
+    }
+    if (isMongoConnected()) {
+      const mongoUser = await UserModel.findOne({ email }).select('_id email name role').lean() as any;
+      if (mongoUser) {
+        existingUser = {
+          id: String(mongoUser._id),
+          email: mongoUser.email,
+          name: mongoUser.name || claims.name || 'User',
+          role: mongoUser.role || 'user',
+        };
+        await UserModel.updateOne({ _id: mongoUser._id }, { $set: { lastLoginAt: new Date() } });
+      }
+    }
+
+    if (!existingUser) {
+      const localUser = dbService.findUserByEmail(email);
+      if (localUser) {
+        existingUser = { id: localUser.id, email: localUser.email, name: localUser.name || claims.name || 'User', role: localUser.role || 'user' };
+      }
+    }
+
+    // A verified Google email can safely link to an existing account with the same email.
+    if (!existingUser) {
+      const registration = await this.register(email, randomBytes(32).toString('hex'), claims.name || 'User', 'google-oauth');
+      return registration;
+    }
+
+    const token = jwt.sign({
+      userId: existingUser.id,
+      email: existingUser.email,
+      name: existingUser.name,
+      role: existingUser.role || 'user',
+    }, this.getJwtSecret(), { expiresIn: '30d' });
+    return {
+      success: true,
+      user: {
+        userId: existingUser.id,
+        email: existingUser.email,
+        name: existingUser.name,
+        role: existingUser.role || 'user',
+      },
+      token,
+    };
+  }
+
   /**
    * Verifies an active JWT session token
    */
@@ -542,6 +610,8 @@ class AuthService {
 
     return { success: true };
   }
+
+
 }
 
 export const authService = new AuthService();

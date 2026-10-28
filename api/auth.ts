@@ -189,6 +189,15 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
+    if (action === 'google' && req.method === 'POST') {
+      const result = await authService.loginWithGoogle(body.credential);
+      if (!result.success || !result.token) {
+        return res.status(401).json({ success: false, error: result.error || 'Google sign-in failed.' });
+      }
+      setCookieOnResponse(res, 'auth_token', result.token, getAuthCookieOptions(true));
+      return res.status(200).json({ success: true, user: result.user, token: result.token });
+    }
+
     if (action === 'logout' && req.method === 'POST') {
       const isProduction = process.env.NODE_ENV === 'production';
       clearCookieOnResponse(res, 'auth_token', {
