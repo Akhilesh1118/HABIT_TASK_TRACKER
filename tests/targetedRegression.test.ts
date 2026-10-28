@@ -110,3 +110,26 @@ test('diagnostic authorization rejects missing, invalid, expired, and ordinary-u
     else process.env.JWT_SECRET = previousSecret;
   }
 });
+
+test('quick notes persist across dates and isolate between users without disappearing', async () => {
+  const { dbService } = await import('../server/services/dbService.ts');
+  const userA = 'test_notes_user_a';
+  const userB = 'test_notes_user_b';
+
+  // Save yesterday notes for User A
+  dbService.syncUserDailyNotes(userA, { '2026-10-28': 'Yesterday study checklist: Quant chapter 4 review' });
+  // Save today notes for User A
+  dbService.syncUserDailyNotes(userA, { '2026-10-29': 'Today focus: GK mock test 2' });
+
+  // User B has different notes
+  dbService.syncUserDailyNotes(userB, { '2026-10-28': 'User B notes for yesterday' });
+
+  const notesA = dbService.getUserDailyNotes(userA);
+  const notesB = dbService.getUserDailyNotes(userB);
+
+  assert.equal(notesA['2026-10-28'], 'Yesterday study checklist: Quant chapter 4 review');
+  assert.equal(notesA['2026-10-29'], 'Today focus: GK mock test 2');
+  assert.equal(notesB['2026-10-28'], 'User B notes for yesterday');
+  assert.equal(notesB['2026-10-29'], undefined);
+});
+

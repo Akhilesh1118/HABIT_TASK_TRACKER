@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StickyNote, Check, Copy, Trash2, ChevronDown, ChevronUp, Clock3, List, SquareCheck } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { formatFriendlyDate } from '../utils/calendarUtils';
@@ -10,8 +10,8 @@ interface QuickNotesCardProps {
   userId: string;
 }
 
-// Save one minute after typing stops so notes appear on the user's other devices.
-const DEBOUNCE_DELAY_MS = 60_000;
+// Save 800ms after typing stops so notes sync fast across devices and sessions.
+const DEBOUNCE_DELAY_MS = 800;
 
 export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   selectedDate,
@@ -23,6 +23,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   );
   const [copiedNotes, setCopiedNotes] = useState(false);
   const [isNotesExpanded, setIsNotesExpanded] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const saveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const latestNotesRef = React.useRef<string>(quickNotes);
@@ -32,6 +33,27 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   useEffect(() => {
     latestNotesRef.current = quickNotes;
   }, [quickNotes]);
+
+  const flushSave = async (valToSave = latestNotesRef.current) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const dateToSave = selectedDateRef.current;
+    storageService.setDailyNotes(dateToSave, valToSave, userId);
+    setSaveStatus('saving');
+    try {
+      const ok = await storageService.syncDailyNotesToServer(userId, dateToSave, valToSave);
+      if (ok) {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2500);
+      } else {
+        setSaveStatus('idle');
+      }
+    } catch {
+      setSaveStatus('idle');
+    }
+  };
 
   // Synchronize Quick Notes when selectedDate changes (flush any pending edits first)
   useEffect(() => {
@@ -45,16 +67,29 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     const notesForDate = storageService.getDailyNotes(selectedDate, userId);
     setQuickNotes(notesForDate);
     latestNotesRef.current = notesForDate;
+    setSaveStatus('idle');
   }, [selectedDate, userId]);
 
-  // Flush pending changes on unmount
+  // Flush pending changes on unmount or browser navigation
   useEffect(() => {
-    return () => {
+    const handleImmediateFlush = () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
-        storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current, userId);
-        void storageService.syncDailyNotesToServer(userId, selectedDateRef.current, latestNotesRef.current);
+        saveTimerRef.current = null;
       }
+      storageService.setDailyNotes(selectedDateRef.current, latestNotesRef.current, userId);
+      void storageService.syncDailyNotesToServer(userId, selectedDateRef.current, latestNotesRef.current);
+    };
+
+    window.addEventListener('app:flush_notes', handleImmediateFlush);
+    window.addEventListener('beforeunload', handleImmediateFlush);
+    window.addEventListener('pagehide', handleImmediateFlush);
+
+    return () => {
+      handleImmediateFlush();
+      window.removeEventListener('app:flush_notes', handleImmediateFlush);
+      window.removeEventListener('beforeunload', handleImmediateFlush);
+      window.removeEventListener('pagehide', handleImmediateFlush);
     };
   }, [userId]);
 
@@ -72,24 +107,12 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     };
   }, [selectedDate, userId]);
 
-  const flushSave = async (valToSave = latestNotesRef.current) => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    storageService.setDailyNotes(selectedDateRef.current, valToSave, userId);
-    const dateToSave = selectedDateRef.current;
-    await storageService.syncDailyNotesToServer(userId, dateToSave, valToSave);
-  };
-
   const handleNotesChange = (val: string) => {
     setQuickNotes(val);
     latestNotesRef.current = val;
-    // Persist locally immediately, then sync to the account after one minute
-    // without typing.
+    // Persist locally immediately, then sync to server with 800ms debounce
     storageService.setDailyNotes(selectedDateRef.current, val, userId);
 
-    // Reset the one-minute autosave countdown while the user is typing.
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
@@ -115,11 +138,12 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
     }
   };
 
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   const handleClearNotes = () => {
     if (!quickNotes) return;
-    if (window.confirm('Clear all quick notes for this date?')) {
-      handleNotesChange('');
-    }
+    handleNotesChange('');
+    setShowClearConfirm(false);
   };
 
   const friendlyDate = formatFriendlyDate(selectedDate, todayDate);
@@ -141,6 +165,16 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               {quickNotes.trim().length > 0 && (
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
                   Active
+                </span>
+              )}
+              {saveStatus === 'saving' && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  Saving...
+                </span>
+              )}
+              {saveStatus === 'saved' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 transition-opacity">
+                  Saved ✓
                 </span>
               )}
             </h3>
@@ -167,15 +201,36 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
                   <Copy className="w-3.5 h-3.5" />
                 )}
               </button>
-              <button
-                id="clear-quick-notes-btn"
-                type="button"
-                onClick={handleClearNotes}
-                className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                title="Clear notes"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+
+              {showClearConfirm ? (
+                <div className="flex items-center space-x-1 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200 animate-in fade-in duration-100">
+                  <span className="text-[10px] text-rose-700 font-semibold">Clear?</span>
+                  <button
+                    type="button"
+                    onClick={handleClearNotes}
+                    className="px-1.5 py-0.5 bg-rose-600 text-white rounded text-[10px] font-bold hover:bg-rose-700 cursor-pointer"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(false)}
+                    className="px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded text-[10px] hover:bg-stone-300 cursor-pointer"
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  id="clear-quick-notes-btn"
+                  type="button"
+                  onClick={() => setShowClearConfirm(true)}
+                  className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  title="Clear notes"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </>
           )}
 
@@ -203,6 +258,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               id="daily-quick-notes-textarea"
               value={quickNotes}
               onChange={(e) => handleNotesChange(e.target.value)}
+              onBlur={() => flushSave()}
               placeholder="Jot down quick thoughts, phone numbers, review checkpoints, or daily reflections for this date..."
               rows={4}
               className="w-full p-3 text-xs sm:text-sm font-medium text-stone-800 placeholder:text-stone-400 bg-stone-50/50 hover:bg-white focus:bg-white rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-stone-900 transition-all resize-y min-h-[100px] leading-relaxed shadow-2xs font-mono sm:font-sans"

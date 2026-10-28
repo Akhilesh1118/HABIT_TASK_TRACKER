@@ -68,6 +68,22 @@
       "updatedAt": "2026-09-18T14:40:25.439Z"
     },
     {
+      "_id": "6aae31c817fb5ef372700311",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "id": "habit_1789800903428_jojz9",
+      "__v": 0,
+      "active": true,
+      "category": "Other",
+      "createdAt": "Sat Sep 19 2026 06:55:04 GMT+0000 (Coordinated Universal Time)",
+      "description": "Target: 2 hour",
+      "dueTime": "20:00",
+      "frequency": "daily",
+      "name": "📚 CGL Study & General Awareness",
+      "startDate": "2026-09-19",
+      "target": "8:00 PM",
+      "updatedAt": "2026-10-28T13:31:07.733Z"
+    },
+    {
       "_id": "6ab2c2b317fb5ef372735d3c",
       "userId": "6aab86f191be3ea1d5d5fcbd",
       "id": "habit_1790100140672_490g2",
@@ -81,7 +97,7 @@
       "name": "🗣️ English",
       "startDate": "2026-09-22",
       "target": "30 min",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6ab34e2517fb5ef37273b4a8",
@@ -97,7 +113,7 @@
       "name": "🔄 Night Revision & Next-day Plan",
       "startDate": "2026-09-23",
       "target": "25 min",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6ab34deb17fb5ef37273b481",
@@ -113,7 +129,7 @@
       "name": "🧘 Morning Mindfulness & Focus",
       "startDate": "2026-09-23",
       "target": "10 min",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6ab34d9517fb5ef37273b43a",
@@ -128,7 +144,7 @@
       "name": "🏃 Exercise / Jogging",
       "startDate": "2026-09-23",
       "target": "30 min",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6acf4d06d461def27d079138",
@@ -144,7 +160,7 @@
       "name": "📚 CGL Study & General Awareness",
       "startDate": "2026-10-14",
       "target": "6 hours",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "updatedAt": "2026-10-28T19:23:13.705Z"
     },
     {
       "_id": "6acf4d38d461def27d079160",
@@ -160,7 +176,7 @@
       "name": "🗣️ English Speaking & Vocab",
       "startDate": "2026-10-14",
       "target": "20 minutes",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "updatedAt": "2026-10-28T19:23:13.705Z"
     },
     {
       "_id": "6acf4d93d461def27d0791a4",
@@ -175,7 +191,7 @@
       "name": "🏃 Exercise",
       "startDate": "2026-10-14",
       "target": "20 minutes",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "updatedAt": "2026-10-28T19:23:13.705Z"
     },
     {
       "_id": "6acf4dc8d461def27d0791cf",
@@ -191,7 +207,7 @@
       "name": "🔄 Night Revision & Next-day Plan",
       "startDate": "2026-10-14",
       "target": "25 minutes",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "updatedAt": "2026-10-28T19:23:13.705Z"
     },
     {
       "_id": "6acf4e09d461def27d0791fb",
@@ -207,7 +223,7 @@
       "name": "🧘 Meditation",
       "startDate": "2026-10-14",
       "target": "15 minutes",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "updatedAt": "2026-10-28T19:23:13.705Z"
     },
     {
       "_id": "6ae0c3c8354b60358afde45e",
@@ -236,22 +252,6 @@
       "name": "Verification Habit",
       "startDate": "2026-10-27",
       "updatedAt": "2026-10-27T15:58:53.320Z"
-    },
-    {
-      "_id": "6aae31c817fb5ef372700311",
-      "userId": "6aabce1ecd2288ecb9b570ea",
-      "id": "habit_1789800903428_jojz9",
-      "__v": 0,
-      "active": true,
-      "category": "Other",
-      "createdAt": "Sat Sep 19 2026 06:55:04 GMT+0000 (Coordinated Universal Time)",
-      "description": "Target: 2 hour",
-      "dueTime": "20:00",
-      "frequency": "daily",
-      "name": "📚 CGL Study & General Awareness",
-      "startDate": "2026-09-19",
-      "target": "8:00 PM",
-      "updatedAt": "2026-10-27T12:49:26.640Z"
     }
   ],
   "tasks": [
@@ -274,7 +274,7 @@
       "scheduledDate": "2026-09-17",
       "status": "completed",
       "title": "English",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "userId": "6aab86f191be3ea1d5d5fcbd"
     },
     {
@@ -296,7 +296,7 @@
       "scheduledDate": "2026-09-17",
       "status": "completed",
       "title": "English",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "userId": "6aab86f191be3ea1d5d5fcbd"
     },
     {
@@ -317,7 +317,7 @@
       "scheduledDate": "2026-09-18",
       "status": "completed",
       "title": "Demo",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "userId": "6aab86f191be3ea1d5d5fcbd"
     },
     {
@@ -392,7 +392,7 @@
       "scheduledDate": "2026-09-18",
       "status": "completed",
       "title": "Demo 2",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aad421617fb5ef3726f9aa6",
@@ -488,6 +488,28 @@
       "updatedAt": "Fri Sep 18 2026 14:25:45 GMT+0000 (Coordinated Universal Time)"
     },
     {
+      "_id": "6aad4a5e17fb5ef3726f9ff4",
+      "id": "task_1789741661244_qgjt9",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "__v": 0,
+      "category": "Other",
+      "completed": true,
+      "completedAt": "2026-09-18T14:30:16.533Z",
+      "createdAt": "Fri Sep 18 2026 14:27:42 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-18",
+      "description": "check application",
+      "dueTime": "20:00",
+      "duration": "1 min session",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": false,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-18",
+      "status": "completed",
+      "title": "Demo 2",
+      "updatedAt": "Wed Oct 28 2026 19:01:07 GMT+0530 (India Standard Time)"
+    },
+    {
       "_id": "6aad4d5817fb5ef3726fa1aa",
       "userId": "6aad4d54b43a10e4db8e218b",
       "id": "task_1789742424557_w1hkl",
@@ -530,6 +552,29 @@
       "updatedAt": "Fri Sep 18 2026 14:40:25 GMT+0000 (Coordinated Universal Time)"
     },
     {
+      "_id": "6aad549517fb5ef3726fa67d",
+      "id": "task_1789744275731_qd3ae",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "__v": 0,
+      "category": "English",
+      "completed": true,
+      "completedAt": "2026-09-18T15:13:43.747Z",
+      "createdAt": "Fri Sep 18 2026 15:11:17 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-18",
+      "description": "Using mobile App",
+      "dueTime": "22:00",
+      "duration": "1",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": true,
+      "priorityRank": 1,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-18",
+      "status": "completed",
+      "title": "ONEWORD SUBSITITUTION",
+      "updatedAt": "Wed Oct 28 2026 19:01:07 GMT+0530 (India Standard Time)"
+    },
+    {
       "_id": "6aad8b0d17fb5ef3726fc0a0",
       "userId": "6aab86f191be3ea1d5d5fcbd",
       "id": "task_1789758218353_7oq9d",
@@ -549,8 +594,31 @@
       "scheduledDate": "2026-09-19",
       "status": "completed",
       "title": "Topic discussion",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "priorityRank": 1
+    },
+    {
+      "_id": "6aad8f1d17fb5ef3726fc2ca",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "id": "task_1789759256769_v441f",
+      "__v": 0,
+      "category": "Other",
+      "completed": true,
+      "completedAt": "2026-09-18T19:26:13.730Z",
+      "createdAt": "Fri Sep 18 2026 19:21:01 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-19",
+      "description": "check function",
+      "dueTime": "20:00",
+      "duration": "5 min",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": true,
+      "priorityRank": 1,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-09-19",
+      "status": "completed",
+      "title": "Demo day 2",
+      "updatedAt": "Wed Oct 28 2026 19:01:07 GMT+0530 (India Standard Time)"
     },
     {
       "_id": "6aae566917fb5ef37270164e",
@@ -572,7 +640,7 @@
       "scheduledDate": "2026-09-19",
       "status": "completed",
       "title": "syllogism",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aae5c9317fb5ef3727019ea",
@@ -599,7 +667,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "PYR QUESTION",
       "title": "Syllogism",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "description": "CLASS 31 from Career will"
     },
     {
@@ -628,8 +696,38 @@
       "studySubject": "Reasoning",
       "studyTopic": "PYR QUESTION",
       "title": "🧠 Revise: PYR QUESTION (Day 1)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": false
+    },
+    {
+      "_id": "6aae5c9317fb5ef3727019ec",
+      "id": "rev_task_rev_1789811857748_owg4_step_2",
+      "userId": "6aab86f191be3ea1d5d5fcbd",
+      "__v": 0,
+      "category": "Reasoning",
+      "completed": true,
+      "completedAt": "2026-09-22T17:51:11.872Z",
+      "createdAt": "Sat Sep 19 2026 09:57:38 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-09-22",
+      "description": "Spaced Revision (Day 3, +3d) for Reasoning - PYR QUESTION",
+      "dueDate": "2026-09-22",
+      "dueTime": "18:00",
+      "duration": "30m",
+      "isRevisionTask": true,
+      "isStudySession": true,
+      "revisionDayOffset": 3,
+      "revisionScheduleId": "rev_1789811857748_owg4",
+      "revisionStepIndex": 2,
+      "revisionSubject": "Reasoning",
+      "revisionTopic": "PYR QUESTION",
+      "scheduledDate": "2026-09-22",
+      "status": "completed",
+      "studySubject": "Reasoning",
+      "studyTopic": "PYR QUESTION",
+      "title": "🧠 Revise: PYR QUESTION (Day 3)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
+      "isTopPriority": false,
+      "priorityRank": 1
     },
     {
       "_id": "6aae5c9317fb5ef3727019ed",
@@ -657,7 +755,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "PYR QUESTION",
       "title": "🧠 Revise: PYR QUESTION (Day 7)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": true,
       "priorityRank": 1
     },
@@ -687,37 +785,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "PYR QUESTION",
       "title": "🧠 Revise: PYR QUESTION (Day 14)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
-    },
-    {
-      "_id": "6aae5c9317fb5ef3727019ec",
-      "id": "rev_task_rev_1789811857748_owg4_step_2",
-      "userId": "6aab86f191be3ea1d5d5fcbd",
-      "__v": 0,
-      "category": "Reasoning",
-      "completed": true,
-      "completedAt": "2026-09-22T17:51:11.872Z",
-      "createdAt": "Sat Sep 19 2026 09:57:38 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-09-22",
-      "description": "Spaced Revision (Day 3, +3d) for Reasoning - PYR QUESTION",
-      "dueDate": "2026-09-22",
-      "dueTime": "18:00",
-      "duration": "30m",
-      "isRevisionTask": true,
-      "isStudySession": true,
-      "revisionDayOffset": 3,
-      "revisionScheduleId": "rev_1789811857748_owg4",
-      "revisionStepIndex": 2,
-      "revisionSubject": "Reasoning",
-      "revisionTopic": "PYR QUESTION",
-      "scheduledDate": "2026-09-22",
-      "status": "completed",
-      "studySubject": "Reasoning",
-      "studyTopic": "PYR QUESTION",
-      "title": "🧠 Revise: PYR QUESTION (Day 3)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
-      "isTopPriority": false,
-      "priorityRank": 1
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aae766f17fb5ef372702870",
@@ -743,7 +811,7 @@
       "studySubject": "GK",
       "studyTopic": "Books and Authors",
       "title": "Books And Authors",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aae766f17fb5ef372702871",
@@ -771,36 +839,8 @@
       "studySubject": "GK",
       "studyTopic": "Books and Authors",
       "title": "🧠 Revise: Books and Authors (Day 1)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": false
-    },
-    {
-      "_id": "6aae766f17fb5ef372702874",
-      "id": "rev_task_rev_1789818474774_zo3h_step_4",
-      "userId": "6aab86f191be3ea1d5d5fcbd",
-      "__v": 0,
-      "category": "GK",
-      "completed": false,
-      "completedAt": null,
-      "createdAt": "Sat Sep 19 2026 11:47:58 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-10-03",
-      "description": "Spaced Revision (Day 14, +14d) for GK - Books and Authors",
-      "dueDate": "2026-10-03",
-      "dueTime": "18:00",
-      "duration": "30m",
-      "isRevisionTask": true,
-      "isStudySession": true,
-      "revisionDayOffset": 14,
-      "revisionScheduleId": "rev_1789818474774_zo3h",
-      "revisionStepIndex": 4,
-      "revisionSubject": "GK",
-      "revisionTopic": "Books and Authors",
-      "scheduledDate": "2026-10-03",
-      "status": "pending",
-      "studySubject": "GK",
-      "studyTopic": "Books and Authors",
-      "title": "🧠 Revise: Books and Authors (Day 14)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aae766f17fb5ef372702872",
@@ -828,7 +868,7 @@
       "studySubject": "GK",
       "studyTopic": "Books and Authors",
       "title": "🧠 Revise: Books and Authors (Day 3)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": false
     },
     {
@@ -857,7 +897,35 @@
       "studySubject": "GK",
       "studyTopic": "Books and Authors",
       "title": "🧠 Revise: Books and Authors (Day 7)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
+    },
+    {
+      "_id": "6aae766f17fb5ef372702874",
+      "id": "rev_task_rev_1789818474774_zo3h_step_4",
+      "userId": "6aab86f191be3ea1d5d5fcbd",
+      "__v": 0,
+      "category": "GK",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Sat Sep 19 2026 11:47:58 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-03",
+      "description": "Spaced Revision (Day 14, +14d) for GK - Books and Authors",
+      "dueDate": "2026-10-03",
+      "dueTime": "18:00",
+      "duration": "30m",
+      "isRevisionTask": true,
+      "isStudySession": true,
+      "revisionDayOffset": 14,
+      "revisionScheduleId": "rev_1789818474774_zo3h",
+      "revisionStepIndex": 4,
+      "revisionSubject": "GK",
+      "revisionTopic": "Books and Authors",
+      "scheduledDate": "2026-10-03",
+      "status": "pending",
+      "studySubject": "GK",
+      "studyTopic": "Books and Authors",
+      "title": "🧠 Revise: Books and Authors (Day 14)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aaec87617fb5ef372706671",
@@ -880,7 +948,7 @@
       "scheduledDate": "2026-09-20",
       "status": "completed",
       "title": "PERCENTAGE",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aaf64c717fb5ef37270b56d",
@@ -903,7 +971,7 @@
       "scheduledDate": "2026-09-20",
       "status": "completed",
       "title": "Economic one shot",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab156c417fb5ef3727230d7",
@@ -925,7 +993,7 @@
       "scheduledDate": "2026-09-21",
       "status": "completed",
       "title": "Reasoning Dice class 1",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab3567217fb5ef37273ba2c",
@@ -947,7 +1015,7 @@
       "scheduledDate": "2026-09-23",
       "status": "completed",
       "title": "Reasoning",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab54db817fb5ef372759a3f",
@@ -969,7 +1037,7 @@
       "scheduledDate": "2026-09-24",
       "status": "completed",
       "title": "Typing test",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab5fdd617fb5ef372762a9f",
@@ -991,7 +1059,7 @@
       "scheduledDate": "2026-09-25",
       "status": "completed",
       "title": "GK",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab9412f17fb5ef3727a79e9",
@@ -1016,7 +1084,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "Dice and Cue & Cuboid complete",
       "title": "Cube & Cuboid",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab9412f17fb5ef3727a79ea",
@@ -1044,7 +1112,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "Dice and Cue & Cuboid complete",
       "title": "🧠 Revise: Dice and Cue & Cuboid complete (Day 1)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab9412f17fb5ef3727a79eb",
@@ -1072,7 +1140,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "Dice and Cue & Cuboid complete",
       "title": "🧠 Revise: Dice and Cue & Cuboid complete (Day 3)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ab9412f17fb5ef3727a79ec",
@@ -1100,7 +1168,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "Dice and Cue & Cuboid complete",
       "title": "🧠 Revise: Dice and Cue & Cuboid complete (Day 7)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": false
     },
     {
@@ -1123,7 +1191,7 @@
       "scheduledDate": "2026-09-28",
       "status": "completed",
       "title": "VENN DAIGRAM",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6aba004817fb5ef3727aee7f",
@@ -1145,7 +1213,7 @@
       "scheduledDate": "2026-09-28",
       "status": "completed",
       "title": "Blood Relation",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6abc83b76a24cf3b6c7c8ade",
@@ -1167,7 +1235,7 @@
       "scheduledDate": "2026-09-30",
       "status": "completed",
       "title": "Blood Relation",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6abdd4356a24cf3b6c7d20f1",
@@ -1189,7 +1257,7 @@
       "scheduledDate": "2026-10-02",
       "status": "completed",
       "title": "Distance and direction",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6abdd4356a24cf3b6c7d20f2",
@@ -1217,7 +1285,7 @@
       "studySubject": "GK",
       "studyTopic": "Books and Authors",
       "title": "🧠 Revise: Books and Authors (Day 30)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ac0a6586a24cf3b6c7e7e9b",
@@ -1239,7 +1307,7 @@
       "scheduledDate": "2026-10-03",
       "status": "completed",
       "title": "Number Analog reasoning",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ac15ca06a24cf3b6c7f27b9",
@@ -1267,7 +1335,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "Dice and Cue & Cuboid complete",
       "title": "🧠 Revise: Dice and Cue & Cuboid complete (Day 14)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ac15ca06a24cf3b6c7f27ba",
@@ -1295,7 +1363,7 @@
       "studySubject": "Reasoning",
       "studyTopic": "Dice and Cue & Cuboid complete",
       "title": "🧠 Revise: Dice and Cue & Cuboid complete (Day 30)",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": true,
       "priorityRank": 1
     },
@@ -1319,7 +1387,7 @@
       "scheduledDate": "2026-10-04",
       "status": "completed",
       "title": "Number Analog reasoning",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ac3270e6a24cf3b6c801584",
@@ -1342,7 +1410,7 @@
       "scheduledDate": "2026-10-05",
       "status": "completed",
       "title": "POLITY",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ac52ee86a24cf3b6c8114ad",
@@ -1365,7 +1433,7 @@
       "scheduledDate": "2026-10-07",
       "status": "completed",
       "title": "Polity class 3",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6acdb390d461def27d0671dc",
@@ -1386,7 +1454,7 @@
       "scheduledDate": "2026-10-13",
       "status": "completed",
       "title": "Gk lecture 6",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ace023ad461def27d06c250",
@@ -1407,7 +1475,7 @@
       "scheduledDate": "2026-10-13",
       "status": "completed",
       "title": "Reasoning",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6acee973d461def27d074f79",
@@ -1428,7 +1496,7 @@
       "scheduledDate": "2026-10-14",
       "status": "completed",
       "title": "GK",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6acf6bced461def27d07b42c",
@@ -1448,7 +1516,7 @@
       "scheduledDate": "2026-10-14",
       "status": "completed",
       "title": "Math",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
       "description": "Class 3"
     },
     {
@@ -1469,7 +1537,7 @@
       "scheduledDate": "2026-10-14",
       "status": "completed",
       "title": "REASONING",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ad08b8ed461def27d0899a2",
@@ -1489,7 +1557,7 @@
       "scheduledDate": "2026-10-15",
       "status": "completed",
       "title": "REASONING",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ad1a373d461def27d0981b8",
@@ -1511,7 +1579,7 @@
       "scheduledDate": "2026-10-16",
       "status": "completed",
       "title": "GK",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ad59d33d461def27d0c0790",
@@ -1531,7 +1599,7 @@
       "scheduledDate": "2026-10-19",
       "status": "completed",
       "title": "GK LECTURE 11",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ad64e82d461def27d0c5dd3",
@@ -1540,7 +1608,7 @@
       "__v": 0,
       "category": "SSC CGL",
       "completed": true,
-      "completedAt": "2026-10-20T13:40:53.718Z",
+      "completedAt": "2026-10-27T18:02:06.437Z",
       "createdAt": "Mon Oct 19 2026 17:08:18 GMT+0000 (Coordinated Universal Time)",
       "date": "2026-10-20",
       "description": "PROFIT AND LOSS CLASS 1",
@@ -1553,8 +1621,12 @@
       "scheduledDate": "2026-10-20",
       "status": "completed",
       "title": "MATH",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)",
-      "priorityRank": 1
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
+      "priorityRank": 1,
+      "excludedDates": [
+        "2026-10-28",
+        "2026-10-29"
+      ]
     },
     {
       "_id": "6ad64ec6d461def27d0c5de7",
@@ -1565,22 +1637,26 @@
       "completed": false,
       "completedAt": null,
       "createdAt": "Mon Oct 19 2026 17:09:26 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-10-20",
+      "date": "2026-10-28",
       "description": "LECTURE 12",
-      "dueTime": "09:50",
+      "dueTime": "19:00",
       "duration": "2 HOURS",
       "enableSpacedRevision": false,
       "isStudySession": false,
-      "isTopPriority": true,
+      "isTopPriority": false,
       "priorityRank": 1,
       "recurringSchedule": "weekdays",
-      "scheduledDate": "2026-10-20",
+      "scheduledDate": "2026-10-28",
       "status": "pending",
-      "title": "GK LECTURE 17",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)",
+      "title": "GK LECTURE",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
       "excludedDates": [
-        "2026-10-27"
-      ]
+        "2026-10-27",
+        "2026-10-28",
+        "2026-10-29"
+      ],
+      "recurringEditScope": "all",
+      "targetOccurrenceDate": "2026-10-28"
     },
     {
       "_id": "6ad6d069354b60358af55ad5",
@@ -1604,7 +1680,7 @@
       "studySubject": "GK",
       "studyTopic": "ANCIENT HISTORY 712AD",
       "title": "HISTORY",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ad6d069354b60358af55ad6",
@@ -1632,36 +1708,8 @@
       "studySubject": "GK",
       "studyTopic": "ANCIENT HISTORY 712AD",
       "title": "🧠 Revise: ANCIENT HISTORY 712AD (Day 1)",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": false
-    },
-    {
-      "_id": "6ad6d069354b60358af55ad7",
-      "id": "rev_task_rev_1792462948827_7otj_step_2",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "category": "GK",
-      "completed": true,
-      "completedAt": "2026-10-23T20:06:22.568Z",
-      "createdAt": "Tue Oct 20 2026 02:22:32 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-10-23",
-      "description": "Spaced Revision (Day 3, +3d) for GK - ANCIENT HISTORY 712AD",
-      "dueDate": "2026-10-23",
-      "dueTime": "18:00",
-      "duration": "30m",
-      "isRevisionTask": true,
-      "isStudySession": true,
-      "revisionDayOffset": 3,
-      "revisionScheduleId": "rev_1792462948827_7otj",
-      "revisionStepIndex": 2,
-      "revisionSubject": "GK",
-      "revisionTopic": "ANCIENT HISTORY 712AD",
-      "scheduledDate": "2026-10-23",
-      "status": "completed",
-      "studySubject": "GK",
-      "studyTopic": "ANCIENT HISTORY 712AD",
-      "title": "🧠 Revise: ANCIENT HISTORY 712AD (Day 3)",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ad6d069354b60358af55ad8",
@@ -1689,9 +1737,37 @@
       "studySubject": "GK",
       "studyTopic": "ANCIENT HISTORY 712AD",
       "title": "🧠 Revise: ANCIENT HISTORY 712AD (Day 7)",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
       "isTopPriority": true,
       "priorityRank": 2
+    },
+    {
+      "_id": "6ad6d069354b60358af55ad7",
+      "id": "rev_task_rev_1792462948827_7otj_step_2",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "__v": 0,
+      "category": "GK",
+      "completed": true,
+      "completedAt": "2026-10-23T20:06:22.568Z",
+      "createdAt": "Tue Oct 20 2026 02:22:32 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-23",
+      "description": "Spaced Revision (Day 3, +3d) for GK - ANCIENT HISTORY 712AD",
+      "dueDate": "2026-10-23",
+      "dueTime": "18:00",
+      "duration": "30m",
+      "isRevisionTask": true,
+      "isStudySession": true,
+      "revisionDayOffset": 3,
+      "revisionScheduleId": "rev_1792462948827_7otj",
+      "revisionStepIndex": 2,
+      "revisionSubject": "GK",
+      "revisionTopic": "ANCIENT HISTORY 712AD",
+      "scheduledDate": "2026-10-23",
+      "status": "completed",
+      "studySubject": "GK",
+      "studyTopic": "ANCIENT HISTORY 712AD",
+      "title": "🧠 Revise: ANCIENT HISTORY 712AD (Day 3)",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6add8cd6354b60358afac899",
@@ -1713,7 +1789,7 @@
       "scheduledDate": "2026-10-25",
       "status": "completed",
       "title": "PET QUESTION",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6add99e9354b60358afadb13",
@@ -1735,7 +1811,7 @@
       "scheduledDate": "2026-10-25",
       "status": "completed",
       "title": "PET QUESTION",
-      "updatedAt": "Tue Oct 27 2026 15:26:57 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6adf2dd6354b60358afc3ada",
@@ -1755,7 +1831,7 @@
       "scheduledDate": "2026-10-27",
       "status": "pending",
       "title": "gk",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6adf2e18354b60358afc3ae8",
@@ -1775,8 +1851,31 @@
       "scheduledDate": "2026-10-24",
       "status": "pending",
       "title": "CGL Preparation — Indian Polity",
-      "updatedAt": "Mon Oct 26 2026 10:50:33 GMT+0000 (Coordinated Universal Time)",
+      "updatedAt": "Wed Oct 28 2026 11:58:00 GMT+0000 (Coordinated Universal Time)",
       "priorityRank": 1
+    },
+    {
+      "_id": "6ae07e8e354b60358afdb078",
+      "id": "task_1793097307267_4bokl",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "__v": 0,
+      "category": "Reading",
+      "completed": true,
+      "completedAt": "2026-10-27T12:18:49.744Z",
+      "createdAt": "Tue Oct 27 2026 10:35:58 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-27",
+      "dueTime": "20:00",
+      "duration": "30 min",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": true,
+      "priorityRank": 1,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-10-27",
+      "status": "completed",
+      "targetOccurrenceDate": "2026-10-27",
+      "title": "demo",
+      "updatedAt": "Wed Oct 28 2026 19:01:07 GMT+0530 (India Standard Time)"
     },
     {
       "_id": "6ae08420354b60358afdb239",
@@ -1802,13 +1901,35 @@
       "priorityRank": 1
     },
     {
+      "_id": "6ae09499354b60358afdba1a",
+      "id": "task_1793102947663_q8c5f",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "__v": 0,
+      "category": "Personal Learning",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Tue Oct 27 2026 12:10:01 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-25",
+      "dueTime": "20:00",
+      "duration": "30 min",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": false,
+      "recurringSchedule": "none",
+      "scheduledDate": "2026-10-25",
+      "status": "pending",
+      "targetOccurrenceDate": "2026-10-27",
+      "title": "Percentage",
+      "updatedAt": "Wed Oct 28 2026 19:01:07 GMT+0530 (India Standard Time)"
+    },
+    {
       "_id": "6ae0c29a354b60358afde3aa",
       "id": "task_override_task_1792429763719_fh3bv_20261027",
       "userId": "6acc5b69adc97ce6c9cf6944",
       "__v": 0,
       "category": "SSC CGL",
-      "completed": false,
-      "completedAt": null,
+      "completed": true,
+      "completedAt": "2026-10-27T16:31:32.682Z",
       "createdAt": "Tue Oct 27 2026 15:26:18 GMT+0000 (Coordinated Universal Time)",
       "date": "2026-10-27",
       "description": "Done",
@@ -1826,10 +1947,10 @@
       "recurringParentId": "task_1792429763719_fh3bv",
       "recurringSchedule": "none",
       "scheduledDate": "2026-10-27",
-      "status": "pending",
+      "status": "completed",
       "targetOccurrenceDate": "2026-10-27",
       "title": "GK LECTURE 17",
-      "updatedAt": "Tue Oct 27 2026 15:26:56 GMT+0000 (Coordinated Universal Time)"
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
     },
     {
       "_id": "6ae0ca3d354b60358afdf3cc",
@@ -1854,117 +1975,73 @@
       "updatedAt": "Tue Oct 27 2026 15:58:53 GMT+0000 (Coordinated Universal Time)"
     },
     {
-      "_id": "6aad4a5e17fb5ef3726f9ff4",
-      "id": "task_1789741661244_qgjt9",
-      "userId": "6aabce1ecd2288ecb9b570ea",
+      "_id": "6ae15d059ac7589404cfe05f",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "id": "task_1793154253504_tlqx8",
       "__v": 0,
-      "category": "Other",
-      "completed": true,
-      "completedAt": "2026-09-18T14:30:16.533Z",
-      "createdAt": "Fri Sep 18 2026 14:27:42 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-09-18",
-      "description": "check application",
-      "dueTime": "20:00",
-      "duration": "1 min session",
-      "enableSpacedRevision": false,
-      "isStudySession": false,
-      "isTopPriority": false,
-      "recurringSchedule": "none",
-      "scheduledDate": "2026-09-18",
-      "status": "completed",
-      "title": "Demo 2",
-      "updatedAt": "Tue Oct 27 2026 12:49:26 GMT+0000 (Coordinated Universal Time)"
-    },
-    {
-      "_id": "6aad549517fb5ef3726fa67d",
-      "id": "task_1789744275731_qd3ae",
-      "userId": "6aabce1ecd2288ecb9b570ea",
-      "__v": 0,
-      "category": "English",
-      "completed": true,
-      "completedAt": "2026-09-18T15:13:43.747Z",
-      "createdAt": "Fri Sep 18 2026 15:11:17 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-09-18",
-      "description": "Using mobile App",
-      "dueTime": "22:00",
-      "duration": "1",
-      "enableSpacedRevision": false,
-      "isStudySession": false,
-      "isTopPriority": true,
-      "priorityRank": 1,
-      "recurringSchedule": "none",
-      "scheduledDate": "2026-09-18",
-      "status": "completed",
-      "title": "ONEWORD SUBSITITUTION",
-      "updatedAt": "Tue Oct 27 2026 12:49:26 GMT+0000 (Coordinated Universal Time)"
-    },
-    {
-      "_id": "6aad8f1d17fb5ef3726fc2ca",
-      "userId": "6aabce1ecd2288ecb9b570ea",
-      "id": "task_1789759256769_v441f",
-      "__v": 0,
-      "category": "Other",
-      "completed": true,
-      "completedAt": "2026-09-18T19:26:13.730Z",
-      "createdAt": "Fri Sep 18 2026 19:21:01 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-09-19",
-      "description": "check function",
-      "dueTime": "20:00",
-      "duration": "5 min",
-      "enableSpacedRevision": false,
-      "isStudySession": false,
-      "isTopPriority": true,
-      "priorityRank": 1,
-      "recurringSchedule": "none",
-      "scheduledDate": "2026-09-19",
-      "status": "completed",
-      "title": "Demo day 2",
-      "updatedAt": "Tue Oct 27 2026 12:49:26 GMT+0000 (Coordinated Universal Time)"
-    },
-    {
-      "_id": "6ae07e8e354b60358afdb078",
-      "id": "task_1793097307267_4bokl",
-      "userId": "6aabce1ecd2288ecb9b570ea",
-      "__v": 0,
-      "category": "Reading",
-      "completed": true,
-      "completedAt": "2026-10-27T12:18:49.744Z",
-      "createdAt": "Tue Oct 27 2026 10:35:58 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-10-27",
-      "dueTime": "20:00",
-      "duration": "30 min",
-      "enableSpacedRevision": false,
-      "isStudySession": false,
-      "isTopPriority": true,
-      "priorityRank": 1,
-      "recurringSchedule": "none",
-      "scheduledDate": "2026-10-27",
-      "status": "completed",
-      "targetOccurrenceDate": "2026-10-27",
-      "title": "demo",
-      "updatedAt": "Tue Oct 27 2026 12:49:26 GMT+0000 (Coordinated Universal Time)"
-    },
-    {
-      "_id": "6ae09499354b60358afdba1a",
-      "id": "task_1793102947663_q8c5f",
-      "userId": "6aabce1ecd2288ecb9b570ea",
-      "__v": 0,
-      "category": "Personal Learning",
+      "category": "SSC CGL",
       "completed": false,
       "completedAt": null,
-      "createdAt": "Tue Oct 27 2026 12:10:01 GMT+0000 (Coordinated Universal Time)",
-      "date": "2026-10-25",
+      "createdAt": "Wed Oct 28 2026 02:25:09 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-28",
       "dueTime": "20:00",
-      "duration": "30 min",
+      "duration": "2 HOURS",
       "enableSpacedRevision": false,
       "isStudySession": false,
-      "isTopPriority": false,
+      "isTopPriority": true,
+      "priorityRank": 3,
       "recurringSchedule": "none",
-      "scheduledDate": "2026-10-25",
+      "scheduledDate": "2026-10-28",
       "status": "pending",
-      "targetOccurrenceDate": "2026-10-27",
-      "title": "Percentage",
-      "updatedAt": "Tue Oct 27 2026 12:49:26 GMT+0000 (Coordinated Universal Time)"
+      "targetOccurrenceDate": "2026-10-28",
+      "title": "ENGLISH",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)"
+    },
+    {
+      "_id": "6ae15ed39ac7589404cfe0d7",
+      "id": "task_1793154713871_26xzw",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "__v": 0,
+      "category": "SSC CGL",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Wed Oct 28 2026 02:32:50 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-28",
+      "dueTime": "20:00",
+      "duration": "2 HOURS",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": true,
+      "recurringSchedule": "weekdays",
+      "scheduledDate": "2026-10-28",
+      "status": "pending",
+      "targetOccurrenceDate": "2026-10-29",
+      "title": "MATH",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
+      "priorityRank": 2
+    },
+    {
+      "_id": "6ae15f819ac7589404cfe118",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "id": "task_1793154888880_2370r",
+      "__v": 0,
+      "category": "GK",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "Wed Oct 28 2026 02:35:45 GMT+0000 (Coordinated Universal Time)",
+      "date": "2026-10-28",
+      "dueTime": "20:00",
+      "duration": "2 HOURS",
+      "enableSpacedRevision": false,
+      "isStudySession": false,
+      "isTopPriority": true,
+      "recurringSchedule": "weekdays",
+      "scheduledDate": "2026-10-28",
+      "status": "pending",
+      "targetOccurrenceDate": "2026-10-28",
+      "title": "GK LECTURE",
+      "updatedAt": "Wed Oct 28 2026 19:23:13 GMT+0000 (Coordinated Universal Time)",
+      "priorityRank": 1
     }
   ],
   "habitCompletions": [
@@ -2010,7 +2087,7 @@
       "completed": true,
       "createdAt": "2026-10-12T02:28:21.956Z",
       "id": "hc_habit_1790100140672_490g2_2026-10-12",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6acc45cad461def27d055826",
@@ -2021,7 +2098,7 @@
       "completed": true,
       "createdAt": "2026-10-12T02:28:25.878Z",
       "id": "hc_habit_1790135842094_978s8_2026-10-12",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6acc45d3d461def27d05582c",
@@ -2032,293 +2109,7 @@
       "completed": true,
       "createdAt": "2026-10-12T02:28:35.268Z",
       "id": "hc_habit_1790135784908_pooki_2026-10-12",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
-    },
-    {
-      "_id": "6adb8f6d354b60358af8fa44",
-      "date": "2026-10-22",
-      "habitId": "habit_1791970706574_ozcd3",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:46:37.749Z",
-      "id": "hc_1792773995791_ot5u",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adb8f6f354b60358af8fa45",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "habitId": "habit_1791970823939_2mt1g",
-      "date": "2026-10-22",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:46:39.270Z",
-      "id": "hc_1792773997389_68h2",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adb8f88354b60358af8fa4f",
-      "date": "2026-10-23",
-      "habitId": "habit_1791970706574_ozcd3",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:03.766Z",
-      "id": "hc_1792774023374_1tet",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adb8f89354b60358af8fa50",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-23",
-      "habitId": "habit_1791970823939_2mt1g",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:04.750Z",
-      "id": "hc_1792774024379_xotq",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad861c2354b60358af5ce2a",
-      "date": "2026-10-20",
-      "habitId": "habit_1791970706574_ozcd3",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792565696389_iieq",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad7710b354b60358af58e33",
-      "date": "2026-10-14",
-      "habitId": "habit_1791970757775_ql16w",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504069346_c4bu",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad77111354b60358af58e35",
-      "date": "2026-10-15",
-      "habitId": "habit_1791970757775_ql16w",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504077022_sn37",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad77119354b60358af58e41",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-16",
-      "habitId": "habit_1791970757775_ql16w",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504086368_125l",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad7711a354b60358af58e42",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-16",
-      "habitId": "habit_1791970706574_ozcd3",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504081940_yor2",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad7711c354b60358af58e44",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-16",
-      "habitId": "habit_1791970823939_2mt1g",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504088511_r38r",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad7711f354b60358af58e49",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-17",
-      "habitId": "habit_1791970823939_2mt1g",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504091646_fwkq",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad77120354b60358af58e4b",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-17",
-      "habitId": "habit_1791970757775_ql16w",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504092671_iolu",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad77121354b60358af58e4d",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-17",
-      "habitId": "habit_1791970706574_ozcd3",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504093526_wz0b",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad77124354b60358af58e4f",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-18",
-      "habitId": "habit_1791970823939_2mt1g",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504097230_6amz",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad77127354b60358af58e54",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-18",
-      "habitId": "habit_1791970706574_ozcd3",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792504099574_v5qh",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad861c6354b60358af5ce2e",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-20",
-      "habitId": "habit_1791970613401_bak9n",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792565695584_s1ql",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad861c6354b60358af5ce30",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-20",
-      "habitId": "habit_1791970757775_ql16w",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792565697697_mk6f",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad8fe7b354b60358af61232",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-21",
-      "habitId": "habit_1791970706574_ozcd3",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792605817549_3uzm",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad8fe7c354b60358af61233",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-21",
-      "habitId": "habit_1791970823939_2mt1g",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792605819409_iky1",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad8fe7d354b60358af61234",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-21",
-      "habitId": "habit_1791970613401_bak9n",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792605815673_leo5",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad8fe7e354b60358af61235",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-21",
-      "habitId": "habit_1791970757775_ql16w",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_1792605820763_l9xp",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6ad996ea354b60358af64299",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "date": "2026-10-20",
-      "habitId": "habit_1791970823939_2mt1g",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-23T16:47:06.205Z",
-      "id": "hc_habit_1791970823939_2mt1g_2026-10-20",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adc92f8354b60358afa6b50",
-      "date": "2026-10-24",
-      "habitId": "habit_1791970613401_bak9n",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-24T11:13:59.971Z",
-      "id": "hc_habit_1791970613401_bak9n_2026-10-24",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adf233a354b60358afc359c",
-      "date": "2026-10-25",
-      "habitId": "habit_1791970613401_bak9n",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-26T09:54:02.365Z",
-      "id": "hc_1793008440848_296u",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adf233b354b60358afc359d",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "habitId": "habit_1791970757775_ql16w",
-      "date": "2026-10-25",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-26T09:54:03.488Z",
-      "id": "hc_1793008441971_r5y0",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
-    },
-    {
-      "_id": "6adf233d354b60358afc359f",
-      "date": "2026-10-25",
-      "habitId": "habit_1791970823939_2mt1g",
-      "userId": "6acc5b69adc97ce6c9cf6944",
-      "__v": 0,
-      "completed": true,
-      "createdAt": "2026-10-26T09:54:05.209Z",
-      "id": "hc_1793008443639_m9bh",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2360354b60358afc35ab",
@@ -2329,7 +2120,7 @@
       "completed": true,
       "createdAt": "2026-10-26T09:54:40.267Z",
       "id": "hc_1793008478749_9ynd",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2368354b60358afc35ac",
@@ -2340,7 +2131,7 @@
       "completed": true,
       "createdAt": "2026-10-26T09:54:48.660Z",
       "id": "hc_1793008487139_f9lp",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2963354b60358afc398d",
@@ -2351,7 +2142,7 @@
       "completed": true,
       "createdAt": "2026-10-26T10:20:19.124Z",
       "id": "hc_1793010016941_bdvp",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2a94354b60358afc3a3a",
@@ -2362,7 +2153,7 @@
       "completed": true,
       "createdAt": "2026-10-26T10:25:24.567Z",
       "id": "hc_habit_1790100140672_490g2_2026-10-21",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2d04354b60358afc3ab2",
@@ -2373,7 +2164,7 @@
       "completed": true,
       "createdAt": "2026-10-26T10:35:48.335Z",
       "id": "hc_1793010946773_5qqg",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2d0e354b60358afc3ab3",
@@ -2384,7 +2175,7 @@
       "completed": true,
       "createdAt": "2026-10-26T10:35:58.706Z",
       "id": "hc_1793010957131_sufb",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2d16354b60358afc3ab6",
@@ -2395,7 +2186,7 @@
       "completed": true,
       "createdAt": "2026-10-26T10:36:06.241Z",
       "id": "hc_1793010964694_u63d",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
       "_id": "6adf2d80354b60358afc3ac9",
@@ -2406,18 +2197,29 @@
       "completed": true,
       "createdAt": "2026-10-26T10:37:52.428Z",
       "id": "hc_1793011070850_767b",
-      "updatedAt": "2026-10-26T10:50:33.887Z"
+      "updatedAt": "2026-10-28T11:58:00.095Z"
     },
     {
-      "_id": "6ae029a5354b60358afd595c",
-      "userId": "6acc5b69adc97ce6c9cf6944",
+      "_id": "6adf3990354b60358afc4048",
       "date": "2026-10-26",
-      "habitId": "habit_1791970823939_2mt1g",
+      "habitId": "habit_1789800903428_jojz9",
+      "userId": "6aabce1ecd2288ecb9b570ea",
       "__v": 0,
       "completed": true,
-      "createdAt": "2026-10-27T04:33:41.356Z",
-      "id": "hc_1793075619159_chef",
-      "updatedAt": "2026-10-27T15:26:57.536Z"
+      "createdAt": "2026-10-26T11:29:20.499Z",
+      "id": "hc_1793014156913_6i76",
+      "updatedAt": "2026-10-28T13:31:07.734Z"
+    },
+    {
+      "_id": "6ae09dd5354b60358afdc02d",
+      "date": "2026-10-27",
+      "habitId": "h_item_habit_1789800903428_jojz9",
+      "userId": "6aabce1ecd2288ecb9b570ea",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-10-27T12:49:25.033Z",
+      "id": "hc_1793105312694_ea96",
+      "updatedAt": "2026-10-28T13:31:07.734Z"
     },
     {
       "_id": "6ae0c3c8354b60358afde45f",
@@ -2442,40 +2244,95 @@
       "updatedAt": "2026-10-27T15:58:53.399Z"
     },
     {
-      "_id": "6adf3990354b60358afc4048",
-      "date": "2026-10-26",
-      "habitId": "habit_1789800903428_jojz9",
-      "userId": "6aabce1ecd2288ecb9b570ea",
+      "_id": "6ae0d223354b60358afdfed3",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "habitId": "habit_1791970823939_2mt1g",
+      "date": "2026-10-27",
       "__v": 0,
       "completed": true,
-      "createdAt": "2026-10-26T11:29:20.499Z",
-      "id": "hc_1793014156913_6i76",
-      "updatedAt": "2026-10-27T12:49:26.640Z"
+      "createdAt": "2026-10-27T16:32:35.245Z",
+      "id": "hc_habit_1791970823939_2mt1g_2026-10-27",
+      "updatedAt": "2026-10-28T19:23:13.773Z"
     },
     {
-      "_id": "6ae09dd5354b60358afdc02d",
-      "date": "2026-10-27",
-      "habitId": "h_item_habit_1789800903428_jojz9",
-      "userId": "6aabce1ecd2288ecb9b570ea",
+      "_id": "6ae16c0f9ac7589404cfe6ae",
+      "habitId": "h_item_habit_1791970613401_bak9n",
+      "date": "2026-10-28",
+      "userId": "6acc5b69adc97ce6c9cf6944",
       "__v": 0,
       "completed": true,
-      "createdAt": "2026-10-27T12:49:25.033Z",
-      "id": "hc_1793105312694_ea96",
-      "updatedAt": "2026-10-27T12:49:26.640Z"
+      "createdAt": "2026-10-28T03:29:19.739Z",
+      "id": "hc_1793158100894_nfs0",
+      "updatedAt": "2026-10-28T19:23:13.773Z"
+    },
+    {
+      "_id": "6ae1e34b9ac7589404d02b82",
+      "date": "2026-10-28",
+      "habitId": "habit_1790100140672_490g2",
+      "userId": "6aab86f191be3ea1d5d5fcbd",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-10-28T11:58:02.892Z",
+      "id": "hc_habit_1790100140672_490g2_2026-10-28",
+      "updatedAt": "2026-10-28T11:58:03.119Z"
+    },
+    {
+      "_id": "6ae2299e9ac7589404d06144",
+      "date": "2026-10-28",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "habitId": "habit_1791970613401_bak9n",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-10-28T16:58:06.072Z",
+      "id": "hc_1793206686064_t2u8",
+      "updatedAt": "2026-10-28T19:23:13.773Z"
+    },
+    {
+      "_id": "6ae22fae9ac7589404d065c9",
+      "habitId": "habit_1791970823939_2mt1g",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "date": "2026-10-28",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-10-28T17:23:58.231Z",
+      "id": "hc_1793208238226_jv1k",
+      "updatedAt": "2026-10-28T19:23:13.773Z"
+    },
+    {
+      "_id": "6ae23f1b9ac7589404d0728a",
+      "habitId": "habit_1791970757775_ql16w",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "date": "2026-10-28",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-10-28T18:29:47.436Z",
+      "id": "hc_1793212182922_zlma",
+      "updatedAt": "2026-10-28T19:23:13.773Z"
+    },
+    {
+      "_id": "6ae24a9e9ac7589404d074bc",
+      "habitId": "h_item_habit_1791970613401_bak9n",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "date": "2026-10-29",
+      "__v": 0,
+      "completed": true,
+      "createdAt": "2026-10-28T19:18:54.136Z",
+      "id": "hc_1793215132033_gv4f",
+      "updatedAt": "2026-10-28T19:23:13.773Z"
     }
   ],
   "taskCompletions": [
     {
-      "_id": "6aae4ae917fb5ef3727010fd",
-      "date": "2026-09-19",
-      "taskId": "task_1789797794809_9mkgi",
-      "userId": "6aab86f191be3ea1d5d5fcbd",
+      "_id": "6ae096dd354b60358afdbb9c",
+      "date": "2026-10-27",
+      "taskId": "task_1793097307267_4bokl",
+      "userId": "6aabce1ecd2288ecb9b570ea",
       "__v": 0,
       "completed": true,
-      "completedAt": "2026-09-19T08:42:17.450Z",
-      "createdAt": "2026-09-19T08:42:17.736Z",
-      "id": "tc_1789807337451_3jy4",
-      "updatedAt": "2026-10-26T10:50:33.888Z"
+      "completedAt": "2026-10-27T12:18:49.744Z",
+      "createdAt": "2026-10-27T12:19:41.616Z",
+      "id": "tc_1793103529745_dnln",
+      "updatedAt": "2026-10-28T13:31:07.735Z"
     },
     {
       "_id": "6ae0c280354b60358afde3a8",
@@ -2487,7 +2344,7 @@
       "completedAt": "2026-10-27T15:25:01.434Z",
       "createdAt": "2026-10-27T15:25:52.611Z",
       "id": "tc_1793114701434_5dml",
-      "updatedAt": "2026-10-27T15:26:57.538Z"
+      "updatedAt": "2026-10-28T19:23:13.842Z"
     },
     {
       "_id": "6ae0c282354b60358afde3a9",
@@ -2499,7 +2356,7 @@
       "completedAt": "2026-10-27T15:25:03.115Z",
       "createdAt": "2026-10-27T15:25:54.652Z",
       "id": "tc_1793114703116_qhd5",
-      "updatedAt": "2026-10-27T15:26:57.538Z"
+      "updatedAt": "2026-10-28T19:23:13.842Z"
     },
     {
       "_id": "6ae0c29b354b60358afde3ab",
@@ -2511,19 +2368,43 @@
       "completedAt": "2026-10-27T15:25:03.115Z",
       "createdAt": "2026-10-27T15:26:19.173Z",
       "id": "tc_1793114726389_v096",
-      "updatedAt": "2026-10-27T15:26:57.538Z"
+      "updatedAt": "2026-10-28T19:23:13.842Z"
     },
     {
-      "_id": "6ae096dd354b60358afdbb9c",
-      "date": "2026-10-27",
-      "taskId": "task_1793097307267_4bokl",
-      "userId": "6aabce1ecd2288ecb9b570ea",
+      "_id": "6ae1e3459ac7589404d02b81",
+      "date": "2026-10-28",
+      "taskId": "task_1793011155052_d8lso",
+      "userId": "6aab86f191be3ea1d5d5fcbd",
       "__v": 0,
       "completed": true,
-      "completedAt": "2026-10-27T12:18:49.744Z",
-      "createdAt": "2026-10-27T12:19:41.616Z",
-      "id": "tc_1793103529745_dnln",
-      "updatedAt": "2026-10-27T12:49:26.641Z"
+      "completedAt": "2026-10-28T11:57:54.817Z",
+      "createdAt": "2026-10-28T11:57:57.779Z",
+      "id": "tc_1793188674817_z2uy",
+      "updatedAt": "2026-10-28T11:58:00.095Z"
+    },
+    {
+      "_id": "6ae20a1b9ac7589404d03a39",
+      "date": "2026-10-28",
+      "taskId": "task_1793154888880_2370r",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "__v": 0,
+      "completed": true,
+      "completedAt": "2026-10-28T14:43:39.569Z",
+      "createdAt": "2026-10-28T14:43:39.644Z",
+      "id": "tc_1793198619569_g001",
+      "updatedAt": "2026-10-28T19:23:13.842Z"
+    },
+    {
+      "_id": "6ae228b99ac7589404d06005",
+      "date": "2026-10-28",
+      "taskId": "task_1793154713871_26xzw",
+      "userId": "6acc5b69adc97ce6c9cf6944",
+      "__v": 0,
+      "completed": true,
+      "completedAt": "2026-10-28T16:54:09.935Z",
+      "createdAt": "2026-10-28T16:54:16.896Z",
+      "id": "tc_1793206449936_cyjc",
+      "updatedAt": "2026-10-28T19:23:13.842Z"
     }
   ],
   "focusSessions": [
@@ -3613,6 +3494,14 @@
       "passwordHash": "$2b$12$CN43a1jOJ9TLkz2MmuutBe57/l6B4AVeCrwKjRBTczPVTxee6oywa",
       "role": "user",
       "createdAt": "2026-10-27T16:11:03.658Z"
+    },
+    {
+      "id": "6ae24347293c5633ef17eab3",
+      "email": "admin@example.com",
+      "name": "Admin",
+      "passwordHash": "$2b$12$z5lZOc6WkcRlu/tmb0Sx2e19dvbne3jJ0mVHvPLBt8s70n6mwlC92",
+      "role": "admin",
+      "createdAt": "2026-10-28T18:47:35.417Z"
     }
   ],
   "categories": [
@@ -5972,6 +5861,27 @@
   "dailyPrioritiesByUser": {
     "6aabce1ecd2288ecb9b570ea": {
       "2026-10-28": []
+    },
+    "6aab86f191be3ea1d5d5fcbd": {
+      "2026-10-29": [
+        "task-top-1",
+        "task-top-2"
+      ]
+    }
+  },
+  "dailyNotesByUser": {
+    "test_notes_user_a": {
+      "2026-10-28": "Yesterday study checklist: Quant chapter 4 review",
+      "2026-10-29": "Today focus: GK mock test 2"
+    },
+    "test_notes_user_b": {
+      "2026-10-28": "User B notes for yesterday"
+    },
+    "6aab86f191be3ea1d5d5fcbd": {
+      "2026-10-28": "Yesterday study session: SSC CGL Quantitative Aptitude revision"
+    },
+    "6acc5b69adc97ce6c9cf6944": {
+      "2026-10-29": "Hello Good morning ..\n\n[00:34] "
     }
   }
 }

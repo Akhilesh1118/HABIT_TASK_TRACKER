@@ -202,6 +202,11 @@ export default function App() {
 
   const handleLogout = useCallback(async () => {
     try {
+      // 1. Flush active Quick Notes to local storage & server while still authenticated
+      if (authUser?.userId) {
+        window.dispatchEvent(new CustomEvent('app:flush_notes'));
+        await storageService.syncAllDailyNotesToServer(authUser.userId).catch(() => {});
+      }
       await authenticatedFetch('/api/auth/logout', { method: 'POST' });
     } catch {
       // Ignore network errors on logout
@@ -213,7 +218,7 @@ export default function App() {
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', window.location.pathname);
     }
-  }, []);
+  }, [authUser?.userId]);
 
   // Trigger state refresh
   const triggerRefresh = useCallback(() => {

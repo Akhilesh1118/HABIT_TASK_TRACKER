@@ -1107,6 +1107,19 @@ class StorageService {
     return queuedSave;
   }
 
+  public syncAllDailyNotesToServer(userId: string): Promise<boolean> {
+    if (typeof window === 'undefined' || !userId || userId === 'usr_default') return Promise.resolve(false);
+    const allNotes = this.getAllDailyNotes(userId);
+    return authenticatedFetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dailyNotes: allNotes }),
+      keepalive: true,
+    })
+      .then((r) => r.ok)
+      .catch(() => false);
+  }
+
   public getDailyPriorities(dateStr: string): string[] {
     const all = this.getAllDailyPriorities();
     return all[dateStr] || [];
@@ -3052,18 +3065,27 @@ class StorageService {
           if (data.dailyPriorities && typeof data.dailyPriorities === 'object') {
             localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(data.dailyPriorities));
           }
-          if (data.dailyNotesPersisted === true && data.dailyNotes && typeof data.dailyNotes === 'object' && !Array.isArray(data.dailyNotes)) {
+          if (data.dailyNotes && typeof data.dailyNotes === 'object' && !Array.isArray(data.dailyNotes)) {
             const userId = this.getAuthenticatedUserId();
             const localNotes = this.getAllDailyNotes(userId);
             const serverNotes = data.dailyNotes as Record<string, string>;
-            // The account database is authoritative after login. Never import
-            // browser-only dates here: they may be stale notes from another
-            // account session and can overwrite another device's state.
-            localStorage.setItem(this.getDailyNotesStorageKey(userId), JSON.stringify(serverNotes));
-            const dates = new Set([...Object.keys(localNotes), ...Object.keys(serverNotes)]);
+            // Smart merge: start with server notes, but preserve local non-empty notes if server has empty or missing
+            const mergedNotes: Record<string, string> = { ...serverNotes };
+            let hasLocalToSync = false;
+            for (const [date, noteText] of Object.entries(localNotes)) {
+              if (noteText && noteText.trim().length > 0 && (!mergedNotes[date] || mergedNotes[date].trim().length === 0)) {
+                mergedNotes[date] = noteText;
+                hasLocalToSync = true;
+              }
+            }
+            localStorage.setItem(this.getDailyNotesStorageKey(userId), JSON.stringify(mergedNotes));
+            const dates = new Set([...Object.keys(localNotes), ...Object.keys(mergedNotes)]);
             dates.forEach((date) => window.dispatchEvent(new CustomEvent('habits:daily_notes_updated', {
-              detail: { date, notes: serverNotes[date] || '', userId },
+              detail: { date, notes: mergedNotes[date] || '', userId },
             })));
+            if (hasLocalToSync && userId && userId !== 'usr_default') {
+              void this.syncAllDailyNotesToServer(userId);
+            }
           }
           // Save user categories sent from authoritative database for this user
           if (Array.isArray(data.categories) && data.categories.length > 0) {
@@ -3205,6 +3227,7 @@ class StorageService {
             taskCompletions: this.getTaskCompletions(),
             focusSessions: this.getFocusSessions(),
             dailyPriorities: this.getAllDailyPriorities(),
+            dailyNotes: this.getAllDailyNotes(this.getAuthenticatedUserId()),
             categories: this.getCategories(),
           };
 

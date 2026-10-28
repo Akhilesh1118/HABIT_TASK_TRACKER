@@ -16,9 +16,12 @@ import {
   RotateCcw,
   Sliders,
   Check,
+  SunMedium,
+  Smartphone,
 } from 'lucide-react';
 import { ActiveFocusTimerState, DailySummaryItem, FocusPresetMode, FocusSession, TaskCategory } from '../types';
 import { storageService } from '../services/storageService';
+import { screenWakeLock } from '../utils/screenWakeLock';
 
 interface FocusModeModalProps {
   isOpen: boolean;
@@ -74,6 +77,28 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
     }
   }, [timerState.autoMarkTaskComplete]);
 
+  // Screen Wake Lock state & subscription
+  const [wakeLockEnabled, setWakeLockEnabled] = useState(() => screenWakeLock.getIsEnabled());
+  const [wakeLockActive, setWakeLockActive] = useState(() => screenWakeLock.isActive());
+
+  useEffect(() => {
+    const unsubscribe = screenWakeLock.subscribe((active) => {
+      setWakeLockActive(active);
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && wakeLockEnabled) {
+      screenWakeLock.acquire();
+    } else {
+      screenWakeLock.release();
+    }
+    return () => {
+      screenWakeLock.release();
+    };
+  }, [isOpen, wakeLockEnabled]);
+
   // Completed sessions for today
   const [todaySessions, setTodaySessions] = useState<FocusSession[]>([]);
 
@@ -118,6 +143,62 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
       }
     }
   };
+
+  // Keyboard shortcuts when Focus Mode modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept typing in inputs
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (timerState.status === 'idle') {
+          if (wakeLockEnabled) screenWakeLock.acquire();
+          onStart();
+        } else if (timerState.status === 'running') {
+          onPause();
+        } else if (timerState.status === 'paused') {
+          if (wakeLockEnabled) screenWakeLock.acquire();
+          onResume();
+        }
+      } else if (e.key === 'Escape') {
+        if (showCustomModal) {
+          setShowCustomModal(false);
+        } else if (showTaskPicker) {
+          setShowTaskPicker(false);
+        } else if (showHistory) {
+          setShowHistory(false);
+        } else {
+          onClose();
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        onToggleSound();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    isOpen,
+    timerState.status,
+    wakeLockEnabled,
+    showCustomModal,
+    showTaskPicker,
+    showHistory,
+    onStart,
+    onPause,
+    onResume,
+    onClose,
+    onToggleSound,
+  ]);
 
   const handleApplyCustom = () => {
     const fMins = Math.max(1, Math.min(240, parseInt(customFocusInput, 10) || 25));
@@ -180,6 +261,35 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
 
         {/* Right utility buttons */}
         <div className="flex items-center space-x-1.5 sm:space-x-2">
+          {/* Screen Wake Lock / Keep Awake Toggle */}
+          <button
+            id="focus-wake-lock-btn"
+            onClick={() => {
+              const next = !wakeLockEnabled;
+              setWakeLockEnabled(next);
+              screenWakeLock.setIsEnabled(next);
+            }}
+            className={`p-1.5 sm:p-2 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1.5 ${
+              wakeLockEnabled
+                ? wakeLockActive
+                  ? 'bg-amber-950/40 text-amber-300 border-amber-600/50 shadow-sm shadow-amber-950/40'
+                  : 'bg-stone-900 text-amber-400 border-stone-800 hover:bg-stone-850'
+                : 'bg-stone-900 hover:bg-stone-800 text-stone-500 border-stone-800'
+            }`}
+            title={
+              wakeLockEnabled
+                ? wakeLockActive
+                  ? 'Screen Keep-Awake: ACTIVE (Mobile display will stay visible)'
+                  : 'Screen Keep-Awake: Enabled'
+                : 'Screen Keep-Awake: OFF (Tap to keep display awake)'
+            }
+          >
+            <SunMedium className={`w-4 h-4 ${wakeLockActive ? 'text-amber-300 animate-pulse' : ''}`} />
+            <span className="hidden md:inline text-[11px] font-semibold">
+              {wakeLockActive ? 'Screen On' : wakeLockEnabled ? 'Keep Awake' : 'Sleep OK'}
+            </span>
+          </button>
+
           {/* History Toggle */}
           <button
             id="focus-history-btn"
@@ -356,7 +466,10 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
             {timerState.status === 'idle' && (
               <button
                 id="focus-start-btn"
-                onClick={onStart}
+                onClick={() => {
+                  if (wakeLockEnabled) screenWakeLock.acquire();
+                  onStart();
+                }}
                 className="flex items-center justify-center space-x-2 px-8 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-base shadow-lg shadow-emerald-950/50 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Play className="w-5 h-5 fill-stone-950" />
@@ -380,7 +493,10 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
             {timerState.status === 'paused' && (
               <button
                 id="focus-resume-btn"
-                onClick={onResume}
+                onClick={() => {
+                  if (wakeLockEnabled) screenWakeLock.acquire();
+                  onResume();
+                }}
                 className="flex items-center justify-center space-x-2 px-7 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-base shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Play className="w-5 h-5 fill-stone-950" />
@@ -419,7 +535,10 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
                 <button
                   id="focus-break-btn"
-                  onClick={onStartBreak}
+                  onClick={() => {
+                    if (wakeLockEnabled) screenWakeLock.acquire();
+                    onStartBreak();
+                  }}
                   className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-stone-950 font-bold text-sm shadow-md transition-all"
                 >
                   <Coffee className="w-4 h-4" />
@@ -427,7 +546,10 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
                 </button>
                 <button
                   id="focus-new-session-btn"
-                  onClick={onStart}
+                  onClick={() => {
+                    if (wakeLockEnabled) screenWakeLock.acquire();
+                    onStart();
+                  }}
                   className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-sm shadow-md transition-all"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -455,6 +577,41 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
               <span>Also mark &quot;{timerState.taskTitle}&quot; as completed when finished</span>
             </label>
           )}
+
+          {/* Screen Wake Lock Status Pill (especially helpful for mobile users) */}
+          <div className="mt-5 flex items-center justify-center">
+            <button
+              type="button"
+              id="focus-wake-lock-pill"
+              onClick={() => {
+                const next = !wakeLockEnabled;
+                setWakeLockEnabled(next);
+                screenWakeLock.setIsEnabled(next);
+              }}
+              className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-full border text-[11px] font-medium transition-all ${
+                wakeLockEnabled && wakeLockActive
+                  ? 'bg-amber-950/40 border-amber-600/40 text-amber-300 hover:bg-amber-950/60 shadow-xs'
+                  : wakeLockEnabled
+                  ? 'bg-stone-900/90 border-stone-800 text-amber-400/90 hover:bg-stone-850'
+                  : 'bg-stone-900/80 border-stone-800 text-stone-500 hover:text-stone-400 hover:bg-stone-850'
+              }`}
+              title="Click to toggle mobile screen keep-awake"
+            >
+              <Smartphone className={`w-3.5 h-3.5 ${wakeLockActive ? 'text-amber-400' : 'text-stone-500'}`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  wakeLockActive ? 'bg-amber-400 animate-pulse' : wakeLockEnabled ? 'bg-amber-500/70' : 'bg-stone-600'
+                }`}
+              />
+              <span>
+                {wakeLockEnabled
+                  ? wakeLockActive
+                    ? 'Screen Keep-Awake Active • Phone won’t auto-lock'
+                    : 'Screen Keep-Awake Enabled'
+                  : 'Screen Keep-Awake OFF • Tap to prevent screen locking'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Mode Selector Row */}
@@ -532,6 +689,15 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
             {timerState.mode === '90/15' && 'Ultradian rhythm session for full-length mock exams.'}
             {timerState.mode === 'custom' && `Custom focus: ${timerState.focusMinutes}m, break: ${timerState.breakMinutes}m.`}
           </p>
+
+          {/* Subtle Keyboard Shortcuts Hint on Desktop */}
+          <div className="hidden sm:flex items-center space-x-3 text-[10px] text-stone-500 pt-1 font-mono">
+            <span><kbd className="px-1.5 py-0.5 rounded bg-stone-900 border border-stone-800 text-stone-400 font-sans">Space</kbd> Play / Pause</span>
+            <span>·</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-stone-900 border border-stone-800 text-stone-400 font-sans">Esc</kbd> Minimize</span>
+            <span>·</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-stone-900 border border-stone-800 text-stone-400 font-sans">F</kbd> Fullscreen</span>
+          </div>
         </div>
 
         {/* Custom Duration Config Dialog */}

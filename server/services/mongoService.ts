@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 
+// CRITICAL: fail fast, don't hang if MongoDB is offline or disconnected
+mongoose.set('bufferCommands', false);
+
 /**
  * Global cached MongoDB connection for serverless / container environments
  */

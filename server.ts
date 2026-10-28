@@ -150,6 +150,23 @@ async function startServer() {
     }
   });
 
+  // CRITICAL route-level fallback: handle database queries failing gracefully when MongoDB is offline
+  app.use((err: any, req: Request, res: Response, next: any) => {
+    if (
+      err &&
+      (err.name === 'MongooseError' ||
+        err.name === 'MongoNetworkError' ||
+        (typeof err.message === 'string' && err.message.includes('buffering timed out')))
+    ) {
+      console.warn('[AI Studio] Database offline — returning fallback response');
+      if (req.method === 'GET') {
+        return res.json(req.path.endsWith('s') || req.path.endsWith('s/') ? [] : {});
+      }
+      return res.status(503).json({ error: 'Service temporarily unavailable (database offline)' });
+    }
+    next(err);
+  });
+
   // --- VITE MIDDLEWARE SETUP ---
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

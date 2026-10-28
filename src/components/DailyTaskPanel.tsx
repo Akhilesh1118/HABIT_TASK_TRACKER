@@ -190,11 +190,13 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   const tasksScheduledMinutes = useMemo(() => {
     return items.reduce((acc, it) => acc + parseDurationToMinutes(it), 0);
   }, [items]);
+  const scheduledHours = Math.floor(tasksScheduledMinutes / 60);
+  const scheduledMins = tasksScheduledMinutes % 60;
 
   // 2. TOTAL PLANNED STUDY DAY:
-  // Dynamically driven by the user's adjusted daily study target (and increases if tasks scheduled exceed target)
+  // Directly driven by the user's adjusted Daily Study Target
   const targetMinutes = targetHours * 60;
-  const plannedMinutes = Math.max(targetMinutes, tasksScheduledMinutes);
+  const plannedMinutes = targetMinutes;
   const plannedHours = Math.floor(plannedMinutes / 60);
   const plannedMins = plannedMinutes % 60;
 
@@ -203,12 +205,12 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   const actualHours = Math.floor(actualStudiedMinutes / 60);
   const actualMins = actualStudiedMinutes % 60;
 
-  // 4. REMAINING TIME: Total Planned Day - Actual Focus Studied Today
-  const remainingMinutes = Math.max(0, plannedMinutes - actualStudiedMinutes);
+  // 4. REMAINING TIME: Daily Target - Actual Focus Studied Today
+  const remainingMinutes = Math.max(0, targetMinutes - actualStudiedMinutes);
   const remainingHours = Math.floor(remainingMinutes / 60);
   const remainingMins = remainingMinutes % 60;
-  const isTargetAchieved = remainingMinutes === 0;
-  const targetProgress = plannedMinutes > 0 ? Math.min(100, Math.round((actualStudiedMinutes / plannedMinutes) * 100)) : 100;
+  const isTargetAchieved = targetMinutes > 0 && actualStudiedMinutes >= targetMinutes;
+  const targetProgress = targetMinutes > 0 ? Math.min(100, Math.round((actualStudiedMinutes / targetMinutes) * 100)) : 100;
 
   // Actionable completion breakdown
   const pomodorosNeeded = Math.ceil(remainingMinutes / 25);
@@ -377,7 +379,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
               </span>
               <div className="flex items-baseline space-x-1 mt-0.5">
                 <span className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-                  {plannedHours}h {plannedMins.toString().padStart(2, '0')}m
+                  {scheduledHours}h {scheduledMins.toString().padStart(2, '0')}m
                 </span>
               </div>
               <span className="text-[10px] sm:text-xs text-stone-500 block">{items.length} tasks</span>
@@ -439,7 +441,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
               </div>
               <span className="text-xs text-stone-500 mt-0.5 block">
                 {items.length > 0
-                  ? `${items.length} ${items.length === 1 ? 'task' : 'tasks'} (${Math.floor(tasksScheduledMinutes / 60)}h ${(tasksScheduledMinutes % 60).toString().padStart(2, '0')}m scheduled)`
+                  ? `${items.length} ${items.length === 1 ? 'task' : 'tasks'} (${scheduledHours}h ${scheduledMins.toString().padStart(2, '0')}m scheduled)`
                   : `Target: ${targetHours}h • 0 tasks`}
               </span>
             </div>
@@ -516,7 +518,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                     type="button"
                     onClick={() => handleSetTargetHours(targetHours - 1)}
                     disabled={targetHours <= 1}
-                    className="w-8 h-8 rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-100 font-bold text-lg flex items-center justify-center disabled:opacity-40"
+                    className="w-9 h-9 rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-100 font-bold text-lg flex items-center justify-center disabled:opacity-40 cursor-pointer active:scale-95 transition-all shadow-2xs"
                   >
                     -
                   </button>
@@ -527,7 +529,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                     type="button"
                     onClick={() => handleSetTargetHours(targetHours + 1)}
                     disabled={targetHours >= 16}
-                    className="w-8 h-8 rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-100 font-bold text-lg flex items-center justify-center disabled:opacity-40"
+                    className="w-9 h-9 rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-100 font-bold text-lg flex items-center justify-center disabled:opacity-40 cursor-pointer active:scale-95 transition-all shadow-2xs"
                   >
                     +
                   </button>
@@ -562,7 +564,7 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                   <span>How to Complete This Target:</span>
                 </span>
                 <span className="font-bold text-indigo-800">
-                  {remainingHours}h {remainingMins}m remaining
+                  {isTargetAchieved ? 'Target Achieved! 🎉' : `${remainingHours}h ${remainingMins}m remaining`}
                 </span>
               </div>
 

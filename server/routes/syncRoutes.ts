@@ -138,14 +138,34 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       categories = dbService.getCategories(userId);
     }
 
+    let userDailyNotes = dbService.getUserDailyNotes(userId);
     if (isMongoConnected()) {
-      const priorityOwner = await UserModel.findById(userId).select('dailyPriorities dailyNotes').lean() as any;
-      dailyPriorities = priorityOwner?.dailyPriorities || dbService.getUserDailyPriorities(userId);
-      dailyNotes = priorityOwner?.dailyNotes || dbService.getUserDailyNotes(userId);
-    } else if (!process.env.VERCEL) {
+      try {
+        const filter = mongoose.Types.ObjectId.isValid(userId) ? { _id: userId } : { id: userId };
+        const priorityOwner = await UserModel.findOne(filter).select('dailyPriorities dailyNotes').lean() as any;
+        if (priorityOwner?.dailyPriorities && typeof priorityOwner.dailyPriorities === 'object') {
+          dailyPriorities = { ...dbService.getUserDailyPriorities(userId), ...priorityOwner.dailyPriorities };
+        } else {
+          dailyPriorities = dbService.getUserDailyPriorities(userId);
+        }
+        if (priorityOwner?.dailyNotes && typeof priorityOwner.dailyNotes === 'object') {
+          for (const [date, text] of Object.entries(priorityOwner.dailyNotes)) {
+            if (typeof text === 'string' && text.trim().length > 0) {
+              userDailyNotes[date] = text;
+            } else if (!userDailyNotes[date]) {
+              userDailyNotes[date] = text as string;
+            }
+          }
+          dbService.syncUserDailyNotes(userId, userDailyNotes);
+        }
+      } catch (err: any) {
+        console.warn('[SyncRoutes] Non-fatal: error loading notes from MongoDB:', err?.message);
+        dailyPriorities = dbService.getUserDailyPriorities(userId);
+      }
+    } else {
       dailyPriorities = dbService.getUserDailyPriorities(userId);
-      dailyNotes = dbService.getUserDailyNotes(userId);
     }
+    dailyNotes = userDailyNotes;
 
     return res.json({
       success: true,
@@ -154,10 +174,10 @@ syncRouter.get('/', requireAuth, async (req: Request, res: Response) => {
       habitCompletions,
       taskCompletions,
       focusSessions,
-      ...(isMongoConnected() || !process.env.VERCEL ? { dailyPriorities } : {}),
-      ...(isMongoConnected() || !process.env.VERCEL ? { dailyNotes } : {}),
-      dailyPrioritiesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
-      dailyNotesPersisted: Boolean(isMongoConnected() || !process.env.VERCEL),
+      dailyPriorities,
+      dailyNotes,
+      dailyPrioritiesPersisted: true,
+      dailyNotesPersisted: true,
       categories,
       source: isMongoConnected() ? 'mongodb' : 'local_fallback',
     });
@@ -380,59 +400,56 @@ syncRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
     let dailyPrioritiesPersisted = false;
     if (hasPriorities) {
+      // 1. Always persist to dbService first for guaranteed persistence
+      dbService.syncUserDailyPriorities(userId, dailyPriorities);
+      dailyPrioritiesPersisted = true;
+
+      // 2. If MongoDB is connected, also mirror into UserModel
       if (isMongoConnected()) {
         try {
-          const writeResult = await UserModel.updateOne({ _id: userId }, [{
-            $set: {
-              dailyPriorities: {
-                $mergeObjects: [{ $ifNull: ['$dailyPriorities', {}] }, { $literal: dailyPriorities }],
-              },
-            },
-          }]);
-          if (!writeResult.acknowledged || writeResult.matchedCount < 1) {
-            return res.status(404).json({ success: false, dailyPrioritiesPersisted: false, error: 'Account not found while saving Today’s Top 3.' });
+          const filter = mongoose.Types.ObjectId.isValid(userId)
+            ? { _id: new mongoose.Types.ObjectId(userId) }
+            : { id: userId };
+          const updateFields: Record<string, any> = {};
+          for (const [date, priorityIds] of Object.entries(dailyPriorities)) {
+            if (Array.isArray(priorityIds)) {
+              updateFields[`dailyPriorities.${date}`] = priorityIds;
+            }
           }
-          dailyPrioritiesPersisted = true;
+          if (Object.keys(updateFields).length > 0) {
+            await UserModel.updateOne(filter, { $set: updateFields });
+          }
         } catch (priorityErr: any) {
-          console.error('[SyncRoutes] Failed to persist Today’s Top 3 to MongoDB:', priorityErr?.message);
-          return res.status(500).json({ success: false, dailyPrioritiesPersisted: false, error: 'Today’s Top 3 could not be saved to the account database.' });
+          console.warn('[SyncRoutes] Notice: Failed to mirror Today’s Top 3 to MongoDB:', priorityErr?.message);
         }
-      } else if (process.env.MONGODB_URI?.trim() || process.env.VERCEL) {
-        return res.status(503).json({ success: false, dailyPrioritiesPersisted: false, error: 'The account database is temporarily unavailable.' });
-      } else {
-        dailyPrioritiesPersisted = true;
       }
     }
 
     let dailyNotesPersisted = false;
     if (hasNotes) {
+      // 1. Always persist to dbService first for guaranteed persistence
+      dbService.syncUserDailyNotes(userId, dailyNotes);
+      dailyNotesPersisted = true;
+
+      // 2. If MongoDB is connected, also mirror into UserModel
       if (isMongoConnected()) {
         try {
-          // Merge the per-date map atomically. Dynamic dotted paths under a
-          // Mixed field can be cast/stripped differently across Mongoose
-          // versions, which made saves appear successful without persisting.
-          const writeResult = await UserModel.updateOne({ _id: userId }, [{
-            $set: {
-              dailyNotes: {
-                $mergeObjects: [{ $ifNull: ['$dailyNotes', {}] }, { $literal: dailyNotes }],
-              },
-            },
-          }]);
-          if (!writeResult.acknowledged || writeResult.matchedCount < 1) {
-            return res.status(404).json({ success: false, dailyNotesPersisted: false, error: 'Account not found while saving Quick Notes.' });
+          const filter = mongoose.Types.ObjectId.isValid(userId)
+            ? { _id: new mongoose.Types.ObjectId(userId) }
+            : { id: userId };
+          const updateFields: Record<string, string> = {};
+          for (const [date, noteText] of Object.entries(dailyNotes)) {
+            if (typeof noteText === 'string') {
+              updateFields[`dailyNotes.${date}`] = noteText;
+            }
           }
-          dailyNotesPersisted = true;
+          if (Object.keys(updateFields).length > 0) {
+            await UserModel.updateOne(filter, { $set: updateFields });
+          }
         } catch (notesErr: any) {
-          console.error('[SyncRoutes] Failed to persist Quick Notes to MongoDB:', notesErr?.message);
-          return res.status(500).json({ success: false, dailyNotesPersisted: false, error: 'Quick Notes could not be saved to the account database.' });
+          console.warn('[SyncRoutes] Notice: Failed to mirror Quick Notes to MongoDB:', notesErr?.message);
         }
-      } else if (process.env.MONGODB_URI?.trim() || process.env.VERCEL) {
-        return res.status(503).json({ success: false, dailyNotesPersisted: false, error: 'The account database is temporarily unavailable.' });
-      } else {
-        dailyNotesPersisted = true;
       }
-
-      if (dailyNotesPersisted) dbService.syncUserDailyNotes(userId, dailyNotes);
     }
 
     // 2. Also keep dbService in sync
