@@ -28,6 +28,7 @@ import {
   AICoachInputData,
   AICoachAnalysisResult,
   StorageLoadResult,
+  MockTestRecord,
 } from '../types';
 import { authenticatedFetch } from '../utils/authClient';
 import { getCurrentIST } from '../utils/timeUtils';
@@ -3789,6 +3790,71 @@ class StorageService {
       const dateB = b.step.completedAt || b.step.scheduledDate;
       return dateB.localeCompare(dateA);
     });
+  }
+
+  private inMemoryMockTests: Map<string, MockTestRecord[]> = new Map();
+
+  public getMockTests(userId?: string): MockTestRecord[] {
+    const user = this.getUser();
+    const effectiveUserId = (userId || user?.email || user?.id || 'default').toLowerCase().trim();
+    const key = `mock_tests_${effectiveUserId}`;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const data = localStorage.getItem(key);
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed)) {
+            this.inMemoryMockTests.set(effectiveUserId, parsed);
+            return parsed;
+          }
+        }
+      }
+    } catch {
+      // Fallback to in-memory
+    }
+    return this.inMemoryMockTests.get(effectiveUserId) || [];
+  }
+
+  public saveMockTest(test: MockTestRecord, userId?: string): void {
+    const user = this.getUser();
+    const effectiveUserId = (userId || user?.email || user?.id || 'default').toLowerCase().trim();
+    const key = `mock_tests_${effectiveUserId}`;
+    const list = [...this.getMockTests(effectiveUserId)];
+    const existingIndex = list.findIndex((t) => t.id === test.id);
+    if (existingIndex >= 0) {
+      list[existingIndex] = test;
+    } else {
+      list.unshift(test);
+    }
+    this.inMemoryMockTests.set(effectiveUserId, list);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(list));
+      }
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tracker:mock_tests_updated', { detail: list }));
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  public deleteMockTest(id: string, userId?: string): void {
+    const user = this.getUser();
+    const effectiveUserId = (userId || user?.email || user?.id || 'default').toLowerCase().trim();
+    const key = `mock_tests_${effectiveUserId}`;
+    const list = this.getMockTests(effectiveUserId).filter((t) => t.id !== id);
+    this.inMemoryMockTests.set(effectiveUserId, list);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(list));
+      }
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tracker:mock_tests_updated', { detail: list }));
+      }
+    } catch {
+      // Ignore
+    }
   }
 
   // Reset to default seed

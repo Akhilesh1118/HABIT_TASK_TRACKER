@@ -478,4 +478,22 @@ export interface StorageLoadResult {
   timedOut?: boolean;
 }
 
+export interface MockTestRecord {
+  id: string;
+  userId?: string;
+  date: string;
+  title: string;
+  examType: string;
+  totalScore: number;
+  maxScore: number;
+  accuracy: number;
+  quantScore?: number;
+  reasoningScore?: number;
+  englishScore?: number;
+  generalAwarenessScore?: number;
+  timeSpentMinutes?: number;
+  notes?: string;
+  createdAt: string;
+}
+
 

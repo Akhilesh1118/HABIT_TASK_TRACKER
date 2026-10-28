@@ -25,6 +25,7 @@ const SpacedRevisionModal = lazy(() => import('./components/SpacedRevisionModal'
 const StreakProtectionModal = lazy(() => import('./components/StreakProtectionModal').then((module) => ({ default: module.StreakProtectionModal })));
 const WeeklyReviewModal = lazy(() => import('./components/WeeklyReviewModal').then((module) => ({ default: module.WeeklyReviewModal })));
 const AICoachModal = lazy(() => import('./components/AICoachModal').then((module) => ({ default: module.AICoachModal })));
+const MockTestTrackerModal = lazy(() => import('./components/MockTestTrackerModal').then((module) => ({ default: module.MockTestTrackerModal })));
 
 export default function App() {
   // Use today's date from environment or client (Asia/Kolkata timezone)
@@ -109,6 +110,7 @@ export default function App() {
   const [isStreakProtectionOpen, setIsStreakProtectionOpen] = useState(false);
   const [isWeeklyReviewModalOpen, setIsWeeklyReviewModalOpen] = useState(false);
   const [isAICoachModalOpen, setIsAICoachModalOpen] = useState(false);
+  const [isMockTestModalOpen, setIsMockTestModalOpen] = useState(false);
 
   // Spaced revision due count for today
   const revisionsDueTodayCount = useMemo(() => {
@@ -512,6 +514,7 @@ export default function App() {
         onOpenStreakProtection={() => setIsStreakProtectionOpen(true)}
         onOpenWeeklyReview={() => setIsWeeklyReviewModalOpen(true)}
         onOpenAICoach={() => setIsAICoachModalOpen(true)}
+        onOpenMockTests={() => setIsMockTestModalOpen(true)}
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         productivityScore={todayProductivityScore.totalScore}
@@ -705,6 +708,18 @@ export default function App() {
         onClose={() => setIsAICoachModalOpen(false)}
         targetDateStr={selectedDate}
       /></Suspense>}
+
+      {/* Mock Test & Exam Performance Tracker Modal */}
+      {isMockTestModalOpen && (
+        <Suspense fallback={null}>
+          <MockTestTrackerModal
+            isOpen={isMockTestModalOpen}
+            onClose={() => setIsMockTestModalOpen(false)}
+            todayDate={todayDate}
+            userId={authUser?.userId || user.id}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

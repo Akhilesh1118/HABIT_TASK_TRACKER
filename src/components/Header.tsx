@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Brain,
   LogOut,
+  Award,
 } from 'lucide-react';
 import { User, StreakStatusInfo } from '../types';
 import { AppLogo } from './AppLogo';
@@ -23,6 +24,7 @@ interface HeaderProps {
   onOpenStreakProtection?: () => void;
   onOpenWeeklyReview?: () => void;
   onOpenAICoach?: () => void;
+  onOpenMockTests?: () => void;
   activeTab?: 'schedule' | 'analytics';
   onSelectTab?: (tab: 'schedule' | 'analytics') => void;
   productivityScore?: number;
@@ -62,6 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStreakProtection,
   onOpenWeeklyReview,
   onOpenAICoach,
+  onOpenMockTests,
   activeTab = 'schedule',
   onSelectTab,
   productivityScore = 87,
@@ -292,6 +295,19 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Mock Tests Button (Desktop / Tablet) */}
+          {onOpenMockTests && (
+            <button
+              id="header-mock-tests-btn"
+              onClick={onOpenMockTests}
+              className="hidden lg:flex items-center space-x-1.5 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200/90 transition-colors shadow-2xs cursor-pointer"
+              title="Open Mock Test & Exam Performance Tracker"
+            >
+              <Award className="w-4 h-4 text-amber-600" />
+              <span>Mocks</span>
+            </button>
+          )}
+
           {/* Habits Manager Button (Desktop) */}
           <button
             id="manage-habits-btn"
@@ -435,6 +451,17 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="px-1 py-0.2 rounded-full text-[10px] font-bold bg-purple-200 text-purple-900">
               {revisionsDueCount !== undefined ? revisionsDueCount : 12}
             </span>
+          </button>
+        )}
+
+        {onOpenMockTests && (
+          <button
+            id="mobile-subnav-mock-tests"
+            onClick={onOpenMockTests}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 whitespace-nowrap hover:bg-amber-100 cursor-pointer"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-600" />
+            <span>Mocks</span>
           </button>
         )}
 

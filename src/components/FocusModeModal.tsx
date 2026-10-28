@@ -18,10 +18,14 @@ import {
   Check,
   SunMedium,
   Smartphone,
+  Headphones,
+  ListCheck,
+  Volume1,
 } from 'lucide-react';
 import { ActiveFocusTimerState, DailySummaryItem, FocusPresetMode, FocusSession, TaskCategory } from '../types';
 import { storageService } from '../services/storageService';
 import { screenWakeLock } from '../utils/screenWakeLock';
+import { ambientAudio, AmbientSoundType } from '../utils/ambientAudio';
 
 interface FocusModeModalProps {
   isOpen: boolean;
@@ -76,6 +80,65 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
       setMarkTaskCompleteCheckbox(timerState.autoMarkTaskComplete);
     }
   }, [timerState.autoMarkTaskComplete]);
+
+  // Ambient soundscape generator state
+  const [ambientSound, setAmbientSound] = useState<AmbientSoundType>('off');
+  const [ambientVolume, setAmbientVolume] = useState<number>(0.5);
+  const [showAmbientMenu, setShowAmbientMenu] = useState<boolean>(false);
+
+  // In-session micro-checklist state
+  const [showChecklist, setShowChecklist] = useState<boolean>(false);
+  const [checklistItems, setChecklistItems] = useState<Array<{ id: string; text: string; done: boolean }>>([]);
+  const [newChecklistText, setNewChecklistText] = useState('');
+
+  // Handle ambient sound playback on modal lifecycle & timer state
+  useEffect(() => {
+    if (!isOpen || timerState.status !== 'running') {
+      if (ambientSound !== 'off' && (!isOpen || timerState.status === 'idle' || timerState.status === 'completed')) {
+        ambientAudio.stop();
+      }
+    } else if (isOpen && timerState.status === 'running' && ambientSound !== 'off') {
+      ambientAudio.play(ambientSound);
+    }
+    return () => {
+      if (!isOpen) {
+        ambientAudio.stop();
+      }
+    };
+  }, [isOpen, timerState.status, ambientSound]);
+
+  const handleSelectAmbient = (type: AmbientSoundType) => {
+    setAmbientSound(type);
+    if (type === 'off') {
+      ambientAudio.stop();
+    } else {
+      ambientAudio.play(type);
+    }
+  };
+
+  const handleVolumeChange = (newVol: number) => {
+    setAmbientVolume(newVol);
+    ambientAudio.setVolume(newVol);
+  };
+
+  const handleAddChecklistItem = () => {
+    if (!newChecklistText.trim()) return;
+    setChecklistItems((prev) => [
+      ...prev,
+      { id: `chk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, text: newChecklistText.trim(), done: false },
+    ]);
+    setNewChecklistText('');
+  };
+
+  const handleToggleChecklistItem = (id: string) => {
+    setChecklistItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
+    );
+  };
+
+  const handleDeleteChecklistItem = (id: string) => {
+    setChecklistItems((prev) => prev.filter((item) => item.id !== id));
+  };
 
   // Screen Wake Lock state & subscription
   const [wakeLockEnabled, setWakeLockEnabled] = useState(() => screenWakeLock.getIsEnabled());
@@ -305,6 +368,121 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
             <span className="hidden md:inline">History</span>
           </button>
 
+          {/* Ambient Soundscape Generator */}
+          <div className="relative">
+            <button
+              id="focus-ambient-sound-btn"
+              onClick={() => setShowAmbientMenu(!showAmbientMenu)}
+              className={`p-1.5 sm:p-2 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1 sm:space-x-1.5 cursor-pointer ${
+                ambientSound !== 'off'
+                  ? 'bg-sky-950/60 text-sky-300 border-sky-600/50 shadow-xs'
+                  : 'bg-stone-900 hover:bg-stone-800 text-stone-400 border-stone-800'
+              }`}
+              title="Ambient Soundscapes (Rain, Brown Noise, 10Hz Alpha tone)"
+            >
+              <Headphones className={`w-4 h-4 ${ambientSound !== 'off' ? 'text-sky-300 animate-pulse' : ''}`} />
+              <span className="hidden md:inline text-[11px] font-semibold">
+                {ambientSound === 'flute'
+                  ? 'Flute'
+                  : ambientSound === 'tibetanBowls'
+                  ? 'Bowls'
+                  : ambientSound === 'thetaMeditation'
+                  ? 'Theta 432Hz'
+                  : ambientSound === 'rain'
+                  ? 'Rain'
+                  : ambientSound === 'brownNoise'
+                  ? 'Noise'
+                  : ambientSound === 'binaural'
+                  ? 'Alpha'
+                  : 'Ambient'}
+              </span>
+            </button>
+
+            {/* Ambient Sound Menu Dropdown */}
+            {showAmbientMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl z-50 p-3 text-left space-y-2.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-1.5 border-b border-stone-800">
+                  <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wide">
+                    Meditation & Focus Sounds
+                  </span>
+                  <button
+                    onClick={() => setShowAmbientMenu(false)}
+                    className="text-stone-500 hover:text-stone-300 text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-1 max-h-72 overflow-y-auto pr-0.5">
+                  {[
+                    { type: 'off' as AmbientSoundType, label: 'Mute / Off', desc: 'No background audio' },
+                    { type: 'flute' as AmbientSoundType, label: '🪈 Bamboo Flute (Bansuri)', desc: 'Spiritual melody, tanpura & breath' },
+                    { type: 'tibetanBowls' as AmbientSoundType, label: '🧘 Tibetan Singing Bowls', desc: 'Resonant bronze & healing rings' },
+                    { type: 'thetaMeditation' as AmbientSoundType, label: '✨ 432Hz Deep Theta Mind', desc: '6Hz meditation wave & zen chimes' },
+                    { type: 'rain' as AmbientSoundType, label: '🌧️ Gentle Rain', desc: 'Pink noise & drops' },
+                    { type: 'brownNoise' as AmbientSoundType, label: '🌊 Brown Noise', desc: 'Deep focus rumble' },
+                    { type: 'binaural' as AmbientSoundType, label: '🧠 10Hz Alpha Tone', desc: 'Binaural study waves' },
+                  ].map((s) => (
+                    <button
+                      key={s.type}
+                      type="button"
+                      onClick={() => handleSelectAmbient(s.type)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                        ambientSound === s.type
+                          ? 'bg-sky-950/60 text-sky-200 font-bold border border-sky-800/60'
+                          : 'text-stone-400 hover:bg-stone-850 hover:text-stone-200'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-medium">{s.label}</span>
+                        <span className="block text-[9px] text-stone-500 font-normal">{s.desc}</span>
+                      </div>
+                      {ambientSound === s.type && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0 ml-1.5" />}
+                    </button>
+                  ))}
+                </div>
+
+                {ambientSound !== 'off' && (
+                  <div className="pt-2 border-t border-stone-800 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-stone-400">
+                      <span>Volume</span>
+                      <span>{Math.round(ambientVolume * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="1"
+                      step="0.05"
+                      value={ambientVolume}
+                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                      className="w-full accent-sky-400 cursor-pointer"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* In-Session Subtasks Checklist Toggle */}
+          <button
+            id="focus-checklist-btn"
+            onClick={() => setShowChecklist(!showChecklist)}
+            className={`p-1.5 sm:p-2 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1 cursor-pointer ${
+              showChecklist
+                ? 'bg-stone-800 text-emerald-400 border-stone-700'
+                : 'bg-stone-900 hover:bg-stone-800 text-stone-400 border-stone-800'
+            }`}
+            title="In-session micro-checklist"
+          >
+            <ListCheck className="w-4 h-4" />
+            <span className="hidden md:inline">Checklist</span>
+            {checklistItems.length > 0 && (
+              <span className="text-[10px] px-1 bg-stone-800 text-emerald-400 rounded-full font-bold">
+                {checklistItems.filter((c) => c.done).length}/{checklistItems.length}
+              </span>
+            )}
+          </button>
+
           {/* Sound Toggle */}
           <button
             id="focus-sound-btn"
@@ -430,6 +608,78 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* In-Session Micro-Checklist Drawer */}
+        {showChecklist && (
+          <div className="w-full max-w-lg mb-4 p-4 rounded-2xl bg-stone-900 border border-stone-800 text-left shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-stone-800">
+              <span className="text-xs font-bold text-stone-200 uppercase tracking-wider flex items-center space-x-1.5">
+                <ListCheck className="w-4 h-4 text-emerald-400" />
+                <span>Session Micro-Checklist</span>
+              </span>
+              <button
+                onClick={() => setShowChecklist(false)}
+                className="text-stone-500 hover:text-stone-300 text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* List */}
+            {checklistItems.length === 0 ? (
+              <p className="text-[11px] text-stone-500 py-1">
+                Add 2–3 sub-goals for this focus sprint (e.g. &quot;Solve 15 Quant MCQs&quot;, &quot;Revise formulas&quot;).
+              </p>
+            ) : (
+              <div className="space-y-1.5 mb-2 max-h-36 overflow-y-auto pr-1">
+                {checklistItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-stone-950/60 border border-stone-850 text-xs group"
+                  >
+                    <label className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0 pr-2">
+                      <input
+                        type="checkbox"
+                        checked={item.done}
+                        onChange={() => handleToggleChecklistItem(item.id)}
+                        className="w-3.5 h-3.5 rounded border-stone-700 bg-stone-900 text-emerald-500 focus:ring-emerald-500/20"
+                      />
+                      <span className={`truncate text-xs ${item.done ? 'line-through text-stone-500' : 'text-stone-200'}`}>
+                        {item.text}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteChecklistItem(item.id)}
+                      className="text-stone-600 hover:text-rose-400 opacity-60 group-hover:opacity-100 p-0.5"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Input */}
+            <div className="flex items-center space-x-2 pt-1">
+              <input
+                type="text"
+                value={newChecklistText}
+                onChange={(e) => setNewChecklistText(e.target.value)}
+                placeholder="Add sub-task..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistItem()}
+                className="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-stone-600 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddChecklistItem}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Large Timer Display Card */}
         <div className="relative flex flex-col items-center justify-center p-5 sm:p-10 w-full max-w-lg rounded-3xl bg-stone-900/40 border border-stone-800/80 shadow-2xl backdrop-blur-sm">
