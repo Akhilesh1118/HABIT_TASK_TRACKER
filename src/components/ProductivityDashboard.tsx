@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -41,6 +40,7 @@ import { getCurrentIST } from '../utils/timeUtils';
 import { WeeklyReviewSummaryCard } from './WeeklyReviewSummaryCard';
 import { WeeklyReviewModal } from './WeeklyReviewModal';
 import { AICoachCard } from './AICoachCard';
+import { TaskVsStudyBarChart } from './TaskVsStudyBarChart';
 
 interface ProductivityDashboardProps {
   selectedDate: string;
@@ -206,19 +206,19 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Controls: View Toggle & Date Stepper */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-stone-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-stone-900 p-3 sm:p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors">
         {/* Daily vs Weekly Toggle */}
-        <div className="flex items-center p-1 bg-stone-100 rounded-lg w-full sm:w-auto justify-center sm:justify-start">
+        <div className="flex items-center p-1 bg-stone-100 dark:bg-stone-800 rounded-lg w-full sm:w-auto justify-center sm:justify-start">
           <button
             id="analytics-daily-toggle-btn"
             onClick={() => setViewMode('daily')}
             className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 sm:px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
               viewMode === 'daily'
-                ? 'bg-white text-stone-900 shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
             }`}
           >
-            <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+            <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>Daily View</span>
           </button>
           <button
@@ -226,8 +226,8 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
             onClick={() => setViewMode('weekly')}
             className={`flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 sm:px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
               viewMode === 'weekly'
-                ? 'bg-white text-stone-900 shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
             }`}
           >
             <CalendarDays className="w-4 h-4 text-indigo-600 shrink-0" />
@@ -422,14 +422,10 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
             </div>
 
             {/* Transparent Scoring Formula Breakdown Drawer */}
-            <AnimatePresence>
-              {showFormulaDetails && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-5 pt-5 border-t border-stone-200 overflow-hidden"
-                >
+            {showFormulaDetails && (
+              <div
+                className="mt-5 pt-5 border-t border-stone-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+              >
                   <div className="bg-stone-900 text-stone-100 rounded-xl p-4 sm:p-5">
                     <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
                       <Info className="w-4 h-4" />
@@ -479,9 +475,8 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
                       </table>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              </div>
+            )}
           </div>
 
           {/* Daily Visualizations Row */}
@@ -803,6 +798,13 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               </div>
             </div>
           </div>
+
+          {/* 7-Day Hours Comparison: Tasks vs. Study Sessions */}
+          <TaskVsStudyBarChart
+            selectedDate={selectedDate}
+            onSelectDate={onSelectDate}
+            refreshTrigger={refreshTrigger}
+          />
         </div>
       )}
 
@@ -1011,6 +1013,13 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Dedicated Recharts Bar Chart: Tasks vs. Study Sessions Over the Last 7 Days */}
+          <TaskVsStudyBarChart
+            selectedDate={selectedDate}
+            onSelectDate={onSelectDate}
+            refreshTrigger={refreshTrigger}
+          />
 
           {/* Dedicated Section: Weekly Subject-Wise Study Time */}
           <div className="bg-white rounded-2xl border border-indigo-200 p-5 sm:p-6 shadow-xs bg-gradient-to-br from-indigo-50/20 via-white to-white">

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   Flame,
   X,
@@ -85,14 +84,10 @@ export const StreakProtectionModal: React.FC<StreakProtectionModalProps> = ({
   };
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="bg-white rounded-2xl border border-stone-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col my-auto max-h-[90vh]"
-        >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
+      <div
+        className="bg-white rounded-2xl border border-stone-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col my-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-150"
+      >
           {/* Header */}
           <div className="flex items-center justify-between p-4 sm:p-5 border-b border-stone-100 bg-gradient-to-r from-orange-50/70 via-white to-amber-50/40">
             <div className="flex items-center space-x-2.5">
@@ -580,8 +575,7 @@ export const StreakProtectionModal: React.FC<StreakProtectionModalProps> = ({
               Close
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
-    </AnimatePresence>
   );
 };

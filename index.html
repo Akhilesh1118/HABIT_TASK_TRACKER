@@ -17,6 +17,21 @@
     <meta name="twitter:card" content="summary_large_image" />
     <script id="google-identity-service" src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('app_theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch(() => {});

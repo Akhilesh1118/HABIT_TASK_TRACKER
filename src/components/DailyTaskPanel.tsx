@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Target,
   History,
+  Trophy,
 } from 'lucide-react';
 import { DailySummaryItem, TaskCategory, StreakStatusInfo } from '../types';
 import { CATEGORY_DETAILS, formatFriendlyDate } from '../utils/calendarUtils';
@@ -24,11 +25,14 @@ import {
   getCurrentIST,
   evaluateTaskScheduleStatus,
 } from '../utils/timeUtils';
+import { QuoteCard } from './QuoteCard';
+import { triggerConfetti, playCelebrationFanfare } from '../utils/celebration';
 
 interface DailyTaskPanelProps {
   selectedDate: string;
   todayDate: string;
   items: DailySummaryItem[];
+  userName?: string;
   revisionsDueTodayCount?: number;
   streakStatus?: StreakStatusInfo;
   focusMinutesToday?: number;
@@ -36,20 +40,21 @@ interface DailyTaskPanelProps {
   onOpenStreakModal?: () => void;
   onOpenRevisionModal?: () => void;
   onOpenFocusModal?: () => void;
+  onOpenMilestones?: () => void;
   onToggleTask: (id: string, isHabit: boolean, habitId?: string) => void;
   onTogglePriority?: (itemId: string) => { success: boolean; error?: string } | void;
   onAddTask: () => void;
   onEditTask: (id: string, targetDate?: string) => void;
   onDeleteTask: (id: string, targetDate?: string) => void;
   onStartFocus?: (item: DailySummaryItem) => void;
+  onAutoPickTop3?: () => void;
 }
-
-
 
 export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   selectedDate,
   todayDate,
   items,
+  userName,
   revisionsDueTodayCount,
   streakStatus,
   focusMinutesToday = 0,
@@ -57,12 +62,14 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   onOpenStreakModal,
   onOpenRevisionModal,
   onOpenFocusModal,
+  onOpenMilestones,
   onToggleTask,
   onTogglePriority,
   onAddTask,
   onEditTask,
   onDeleteTask,
   onStartFocus,
+  onAutoPickTop3,
 }) => {
   const [categoryFilter, setCategoryFilter] = useState<'all' | TaskCategory>('all');
   const [priorityAlert, setPriorityAlert] = useState<string | null>(null);
@@ -146,30 +153,50 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
     }
   };
 
-  const totalItems = items.length;
-  const completedItems = items.filter((i) => i.completed).length;
+  // Safe filtering: ensure items is an array and filter out any null/undefined entries
+  const safeItems = useMemo(() => {
+    if (!items || !Array.isArray(items)) return [];
+    return items.filter((item): item is DailySummaryItem => Boolean(item && item.id));
+  }, [items]);
+
+  const totalItems = safeItems.length;
+  const completedItems = safeItems.filter((i) => i.completed).length;
   const percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   const isToday = selectedDate === todayDate;
   const isFuture = selectedDate > todayDate;
   const isPast = selectedDate < todayDate;
 
-  // Separate Top 3 priorities from Other tasks (strictly mutually exclusive)
-  const priorityItems = items
-    .filter((item) => item.isTopPriority)
-    .sort((a, b) => (a.priorityRank || 99) - (b.priorityRank || 99));
+  // Separate Top 3 priorities from Other tasks (strictly mutually exclusive, capped at 3)
+  const priorityItems = useMemo(() => {
+    return safeItems
+      .filter((item) => Boolean(item.isTopPriority))
+      .sort((a, b) => (a.priorityRank || 99) - (b.priorityRank || 99))
+      .slice(0, 3);
+  }, [safeItems]);
 
-  const otherItems = items.filter((item) => !item.isTopPriority);
+  const priorityItemIdSet = useMemo(() => {
+    return new Set(priorityItems.map((p) => p.id));
+  }, [priorityItems]);
+
+  // Everything not in the Top 3 is an "other" task (guarantees mutually exclusive & no missing tasks)
+  const otherItems = useMemo(() => {
+    return safeItems.filter((item) => !priorityItemIdSet.has(item.id));
+  }, [safeItems, priorityItemIdSet]);
 
   // Filter items by category
-  const filteredPriorityItems = priorityItems.filter((item) => {
-    if (categoryFilter === 'all') return true;
-    return item.category === categoryFilter;
-  });
+  const filteredPriorityItems = useMemo(() => {
+    return priorityItems.filter((item) => {
+      if (categoryFilter === 'all') return true;
+      return item.category === categoryFilter;
+    });
+  }, [priorityItems, categoryFilter]);
 
-  const filteredOtherItems = otherItems.filter((item) => {
-    if (categoryFilter === 'all') return true;
-    return item.category === categoryFilter;
-  });
+  const filteredOtherItems = useMemo(() => {
+    return otherItems.filter((item) => {
+      if (categoryFilter === 'all') return true;
+      return item.category === categoryFilter;
+    });
+  }, [otherItems, categoryFilter]);
 
   // Helper to parse item planned duration to minutes
   const parseDurationToMinutes = (item: DailySummaryItem): number => {
@@ -319,14 +346,17 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-3.5 sm:p-6 flex flex-col h-full">
+    <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 shadow-xs p-3.5 sm:p-6 flex flex-col h-full transition-colors">
+      {/* Daily Quote Section (Prominent Header) */}
+      <QuoteCard selectedDate={selectedDate} userName={userName} className="mb-3.5 sm:mb-4" />
+
       {/* Header & Date */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 sm:pb-4 border-b border-stone-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 sm:pb-4 border-b border-stone-100 dark:border-stone-800">
         <div>
-          <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-emerald-600">
+          <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             {isPast ? 'Selected Date' : 'Selected Day Plan'}
           </span>
-          <h2 className="text-lg sm:text-2xl font-bold text-stone-900 tracking-tight">
+          <h2 className="text-lg sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
             {formatFriendlyDate(selectedDate, todayDate)}
           </h2>
           {isPast && (
@@ -851,31 +881,98 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
         </div>
       ) : (
         <>
-          {/* Daily Progress Bar */}
-          <div className="my-5 p-4 rounded-xl bg-stone-50 border border-stone-100">
-        <div className="flex items-center justify-between text-sm mb-2">
-          <span className="font-semibold text-stone-800">
-            {completedItems} / {totalItems} tasks completed
-          </span>
-          <span
-            className={`font-bold text-sm ${
-              percentage === 100 ? 'text-emerald-600' : 'text-stone-700'
-            }`}
-          >
-            {percentage}% Progress
-          </span>
-        </div>
+          {/* Daily Target Progress & Stepped Milestones */}
+          <div className="my-5 p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200/80 dark:border-stone-800 space-y-3 transition-colors">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-stone-800 dark:text-stone-200">
+                  {completedItems} / {totalItems} daily targets completed
+                </span>
+                {percentage === 100 && totalItems > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 animate-pulse">
+                    100% Conquered
+                  </span>
+                )}
+              </div>
+              <span
+                className={`font-mono font-bold text-sm tabular-nums ${
+                  percentage === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-700 dark:text-stone-300'
+                }`}
+              >
+                {percentage}%
+              </span>
+            </div>
 
-        {/* Bar */}
-        <div className="w-full h-2.5 bg-stone-200 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all duration-300 rounded-full ${
-              percentage === 100 ? 'bg-emerald-600' : 'bg-emerald-500'
-            }`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
+            {/* Stepped Milestone Track */}
+            <div className="relative w-full">
+              <div className="w-full h-3 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    percentage === 100
+                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                      : percentage >= 75
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-500'
+                      : percentage >= 50
+                      ? 'bg-gradient-to-r from-emerald-600 to-emerald-500'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+
+              {/* Milestone Step Markers: 25%, 50%, 75%, 100% */}
+              <div className="flex justify-between items-center text-[10px] text-stone-400 dark:text-stone-500 font-mono mt-1 px-1">
+                <span className={percentage >= 25 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}>25% Start</span>
+                <span className={percentage >= 50 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}>50% Halfway</span>
+                <span className={percentage >= 75 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}>75% Peak</span>
+                <span className={percentage === 100 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}>100% Target 🏆</span>
+              </div>
+            </div>
+
+            {/* Daily Target 100% Achieved Celebration Banner */}
+            {percentage === 100 && totalItems >= 1 && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+                <div className="flex items-center space-x-2.5">
+                  <span className="text-2xl">🎉</span>
+                  <div>
+                    <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 block">
+                      Daily Target Milestone Achieved!
+                    </span>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                      You've conquered every scheduled item for today.
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerConfetti(140, 3000);
+                      playCelebrationFanfare();
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1 cursor-pointer"
+                    title="Celebrate with confetti"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Celebrate 🎊</span>
+                  </button>
+
+                  {onOpenMilestones && (
+                    <button
+                      type="button"
+                      onClick={onOpenMilestones}
+                      className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 text-xs font-semibold transition-all shadow-2xs flex items-center space-x-1 cursor-pointer"
+                      title="View all badges"
+                    >
+                      <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Badges</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
       {/* Category Filter Pills */}
       <div className="flex items-center space-x-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none text-xs">
@@ -952,8 +1049,20 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
               </div>
             </div>
 
-            {/* Counter pill */}
+            {/* Counter pill & Auto-Pick Action */}
             <div className="flex items-center space-x-1.5">
+              {priorityItems.length < 3 && otherItems.length > 0 && onAutoPickTop3 && !isPast && (
+                <button
+                  type="button"
+                  id="auto-pick-top-3-btn"
+                  onClick={onAutoPickTop3}
+                  className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-all shadow-2xs cursor-pointer active:scale-95"
+                  title="Auto-select Top 3 Priorities from your available tasks"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Auto-Pick Top 3</span>
+                </button>
+              )}
               <span
                 id="top-3-counter-badge"
                 className={`px-2.5 py-0.5 rounded-full text-xs font-bold border transition-colors ${
@@ -984,6 +1093,16 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                     Click the star icon (⭐) next to any task below to set your Top 3 Priorities for today.
                   </p>
                 </div>
+                {otherItems.length > 0 && onAutoPickTop3 && !isPast && (
+                  <button
+                    type="button"
+                    onClick={onAutoPickTop3}
+                    className="mt-1 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-900 font-bold text-xs rounded-lg shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Auto-Select Top 3 for Today</span>
+                  </button>
+                )}
               </div>
             ) : filteredPriorityItems.length === 0 ? (
               /* When category filter hides selected priorities */
@@ -995,8 +1114,14 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
             ) : (
               /* Render Top 3 Items */
               filteredPriorityItems.map((item, index) => {
-                const catMeta = CATEGORY_DETAILS[item.category] || CATEGORY_DETAILS.Other;
-                const rankNumber = item.priorityRank || (index + 1);
+                if (!item) return null;
+                const catMeta = (item.category && CATEGORY_DETAILS[item.category]) || CATEGORY_DETAILS.Other || {
+                  icon: '🏷️',
+                  bg: 'bg-stone-50',
+                  text: 'text-stone-700',
+                  border: 'border-stone-200',
+                };
+                const rankNumber = Math.min(3, Math.max(1, categoryFilter === 'all' ? (index + 1) : (item.priorityRank || (index + 1))));
                 const isOverdue = checkIsOverdue(item);
 
                 return (
@@ -1336,8 +1461,14 @@ export const DailyTaskPanel: React.FC<DailyTaskPanelProps> = ({
                 )}
               </div>
             ) : (
-              filteredOtherItems.map((item) => {
-                const catMeta = CATEGORY_DETAILS[item.category] || CATEGORY_DETAILS.Other;
+              filteredOtherItems.map((item, index) => {
+                if (!item) return null;
+                const catMeta = (item.category && CATEGORY_DETAILS[item.category]) || CATEGORY_DETAILS.Other || {
+                  icon: '🏷️',
+                  bg: 'bg-stone-50',
+                  text: 'text-stone-700',
+                  border: 'border-stone-200',
+                };
                 const isOverdue = checkIsOverdue(item);
 
                 return (

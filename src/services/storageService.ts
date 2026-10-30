@@ -592,6 +592,8 @@ class StorageService {
       // Update existing
       const index = tasks.findIndex((t) => t.id === taskData.id);
       if (index !== -1) {
+        const oldTask = tasks[index];
+        const oldDate = oldTask.scheduledDate || oldTask.date;
         const updated: Task = {
           ...tasks[index],
           ...taskData,
@@ -606,12 +608,23 @@ class StorageService {
         tasks[index] = updated;
         localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
 
+        // If task was rescheduled to a different date, clean it from the previous date's priorities
+        if (oldDate && scheduledDate && oldDate !== scheduledDate) {
+          this.removeDailyPriority(oldDate, updated.id);
+        }
+
         // Sync with daily priorities if isTopPriority was specified
         if (taskData.isTopPriority !== undefined) {
           const currentPriorities = this.getDailyPriorities(updated.date);
           if (taskData.isTopPriority && !currentPriorities.includes(updated.id)) {
             if (currentPriorities.length < 3) {
               this.setDailyPriorities(updated.date, [...currentPriorities, updated.id]);
+            } else {
+              // Priorities already full at 3, cannot promote without unstarring an existing priority
+              updated.isTopPriority = false;
+              updated.priorityRank = undefined;
+              tasks[index] = updated;
+              localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
             }
           } else if (!taskData.isTopPriority && currentPriorities.includes(updated.id)) {
             this.setDailyPriorities(updated.date, currentPriorities.filter(id => id !== updated.id));
@@ -658,6 +671,11 @@ class StorageService {
       const currentPriorities = this.getDailyPriorities(newTask.date);
       if (currentPriorities.length < 3 && !currentPriorities.includes(newTask.id)) {
         this.setDailyPriorities(newTask.date, [...currentPriorities, newTask.id]);
+      } else if (currentPriorities.length >= 3) {
+        newTask.isTopPriority = false;
+        newTask.priorityRank = undefined;
+        tasks[0] = newTask;
+        localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
       }
     }
 
@@ -838,6 +856,7 @@ class StorageService {
       target.excludedDates = Array.from(excluded);
       target.updatedAt = new Date().toISOString();
       localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+      this.removeDailyPriority(targetDate, taskId);
       this.syncWithServer(true);
       return true;
     }
@@ -850,12 +869,17 @@ class StorageService {
     const completions = this.getTaskCompletions().filter((c) => c.taskId !== taskId);
     localStorage.setItem(STORAGE_KEYS.TASK_COMPLETIONS, JSON.stringify(completions));
 
-    if (target) {
-      const allPriorities = this.getAllDailyPriorities();
-      if (allPriorities[target.date] && allPriorities[target.date].includes(taskId)) {
-        allPriorities[target.date] = allPriorities[target.date].filter((id) => id !== taskId);
-        localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(allPriorities));
+    // Clean up taskId from daily priorities across ALL dates
+    const allPriorities = this.getAllDailyPriorities();
+    let priorityChanged = false;
+    for (const date in allPriorities) {
+      if (allPriorities[date]?.includes(taskId)) {
+        allPriorities[date] = allPriorities[date].filter((id) => id !== taskId);
+        priorityChanged = true;
       }
+    }
+    if (priorityChanged) {
+      localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(allPriorities));
     }
 
     authenticatedFetch(`/api/tasks/${taskId}`, { method: 'DELETE' }).catch(() => {});
@@ -909,6 +933,23 @@ class StorageService {
 
     habits[index].active = !habits[index].active;
     localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
+
+    // If deactivated, prune from all daily priorities
+    if (!habits[index].active) {
+      const allPriorities = this.getAllDailyPriorities();
+      let priorityChanged = false;
+      const habitItemId = `h_item_${habitId}`;
+      for (const date in allPriorities) {
+        if (allPriorities[date]?.includes(habitItemId) || allPriorities[date]?.includes(habitId)) {
+          allPriorities[date] = allPriorities[date].filter((id) => id !== habitItemId && id !== habitId);
+          priorityChanged = true;
+        }
+      }
+      if (priorityChanged) {
+        localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(allPriorities));
+      }
+    }
+
     this.syncWithServer();
     return habits[index];
   }
@@ -1121,23 +1162,134 @@ class StorageService {
       .catch(() => false);
   }
 
-  public getDailyPriorities(dateStr: string): string[] {
+  public getRawDailyPriorities(dateStr: string): string[] {
     const all = this.getAllDailyPriorities();
     return all[dateStr] || [];
   }
 
-  public setDailyPriorities(dateStr: string, itemIds: string[]): string[] {
-    // Strictly cap at 3 priorities
-    const capped = itemIds.slice(0, 3);
+  public getValidItemIdsForDate(dateStr: string): Set<string> {
+    const scheduledTasks = this.getTasksByDate(dateStr);
+    const scheduledTaskIds = new Set(scheduledTasks.map((t) => t.id));
+    const allTasks = this.getTasks();
+
+    const completedOnThisDateTasks = allTasks.filter((t) => {
+      const isRecurring = Boolean(t.recurringSchedule && t.recurringSchedule !== 'none');
+      if (isRecurring) return false;
+      if (!t.completed && t.status !== 'completed') return false;
+      const compDate = this.getTaskCompletionDate(t);
+      return compDate === dateStr && !scheduledTaskIds.has(t.id);
+    });
+
+    const habits = this.getHabits().filter((h) => h.active && h.startDate <= dateStr);
+
+    const valid = new Set<string>();
+    for (const t of scheduledTasks) valid.add(t.id);
+    for (const t of completedOnThisDateTasks) valid.add(t.id);
+    for (const h of habits) {
+      valid.add(h.id);
+      valid.add(`h_item_${h.id}`);
+    }
+    return valid;
+  }
+
+  public sanitizeDailyPriorities(dateStr: string): string[] {
     const all = this.getAllDailyPriorities();
-    all[dateStr] = capped;
-    localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(all));
+    const raw = all[dateStr];
+    if (!raw || !Array.isArray(raw) || raw.length === 0) {
+      return [];
+    }
+
+    const validIds = this.getValidItemIdsForDate(dateStr);
+    const sanitized: string[] = [];
+    const seenHabits = new Set<string>();
+
+    for (const id of raw) {
+      if (!id || typeof id !== 'string') continue;
+
+      const isHabit = id.startsWith('h_item_');
+      const rawHabitId = isHabit ? id.replace(/^h_item_/, '') : id;
+      const habitPrefixedId = isHabit ? id : `h_item_${id}`;
+
+      // Check if this priority corresponds to an existing task or habit
+      if (validIds.has(id) || validIds.has(rawHabitId) || validIds.has(habitPrefixedId)) {
+        if (validIds.has(habitPrefixedId) || isHabit) {
+          if (seenHabits.has(rawHabitId)) continue;
+          seenHabits.add(rawHabitId);
+          sanitized.push(habitPrefixedId);
+        } else {
+          if (!sanitized.includes(id)) {
+            sanitized.push(id);
+          }
+        }
+      }
+    }
+
+    const capped = sanitized.slice(0, 3);
+
+    // If cleaned version differs from stored raw, persist to eliminate phantom slots
+    const isDifferent =
+      raw.length !== capped.length || raw.some((id, idx) => id !== capped[idx]);
+    if (isDifferent) {
+      all[dateStr] = capped;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(all));
+      }
+    }
+
+    return capped;
+  }
+
+  public getDailyPriorities(dateStr: string): string[] {
+    return this.sanitizeDailyPriorities(dateStr);
+  }
+
+  public removeDailyPriority(dateStr: string, itemId: string): boolean {
+    const all = this.getAllDailyPriorities();
+    const current = all[dateStr];
+    if (!current || !Array.isArray(current)) return false;
+
+    const isHabit = itemId.startsWith('h_item_');
+    const rawHabitId = isHabit ? itemId.replace(/^h_item_/, '') : itemId;
+    const habitPrefixedId = isHabit ? itemId : `h_item_${itemId}`;
+
+    const filtered = current.filter(
+      (id) => id !== itemId && id !== rawHabitId && id !== habitPrefixedId
+    );
+    if (filtered.length !== current.length) {
+      all[dateStr] = filtered;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(all));
+      }
+      this.syncWithServer(true);
+      return true;
+    }
+    return false;
+  }
+
+  public setDailyPriorities(dateStr?: string, itemIds: string[] = []): string[] {
+    const targetDate = dateStr && typeof dateStr === 'string' && dateStr.trim().length > 0
+      ? dateStr.trim()
+      : getCurrentIST().dateStr;
+
+    // Filter valid string IDs, deduplicate, and strictly cap at 3 priorities
+    const cleanIds = Array.isArray(itemIds)
+      ? Array.from(new Set(itemIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)))
+      : [];
+    const capped = cleanIds.slice(0, 3);
+
+    const all = this.getAllDailyPriorities();
+    all[targetDate] = capped;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.DAILY_PRIORITIES, JSON.stringify(all));
+    }
 
     // Also sync isTopPriority and priorityRank on Task records for this date
     const tasks = this.getTasks();
     let modified = false;
-    tasks.forEach(t => {
-      if (t.date === dateStr) {
+    tasks.forEach((t) => {
+      const isScheduledForDate = t.date === targetDate || t.scheduledDate === targetDate;
+      const isCompletedOnDate = this.getTaskCompletionDate(t) === targetDate;
+      if (isScheduledForDate || isCompletedOnDate || capped.includes(t.id)) {
         const rankIndex = capped.indexOf(t.id);
         const shouldBeTop = rankIndex !== -1;
         const newRank = shouldBeTop ? ((rankIndex + 1) as 1 | 2 | 3) : undefined;
@@ -1148,7 +1300,7 @@ class StorageService {
         }
       }
     });
-    if (modified) {
+    if (modified && typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
     }
 
@@ -1158,14 +1310,37 @@ class StorageService {
     return capped;
   }
 
-  public toggleDailyPriority(dateStr: string, itemId: string): { success: boolean; error?: string; priorities: string[] } {
-    const current = this.getDailyPriorities(dateStr);
-    const existsIndex = current.indexOf(itemId);
+  public toggleDailyPriority(dateStr?: string, itemId?: string): { success: boolean; error?: string; priorities: string[] } {
+    const targetDate = dateStr && typeof dateStr === 'string' && dateStr.trim().length > 0
+      ? dateStr.trim()
+      : getCurrentIST().dateStr;
+
+    if (!itemId || typeof itemId !== 'string' || itemId.trim().length === 0) {
+      return {
+        success: false,
+        error: 'Invalid item ID for priority toggle.',
+        priorities: this.getDailyPriorities(targetDate),
+      };
+    }
+
+    // 1. Always work with sanitized priorities for dateStr to ensure no ghost or deleted IDs occupy slots
+    const current = this.sanitizeDailyPriorities(targetDate);
+
+    const isHabit = itemId.startsWith('h_item_');
+    const rawHabitId = isHabit ? itemId.replace(/^h_item_/, '') : itemId;
+    const habitPrefixedId = isHabit ? itemId : `h_item_${itemId}`;
+
+    const existsIndex = current.findIndex(
+      (id) => id === itemId || id === rawHabitId || id === habitPrefixedId
+    );
 
     if (existsIndex !== -1) {
       // Remove priority
-      const updated = current.filter(id => id !== itemId);
-      this.setDailyPriorities(dateStr, updated);
+      const targetId = current[existsIndex];
+      const updated = current.filter(
+        (id) => id !== targetId && id !== itemId && id !== rawHabitId && id !== habitPrefixedId
+      );
+      this.setDailyPriorities(targetDate, updated);
       return { success: true, priorities: updated };
     }
 
@@ -1178,20 +1353,63 @@ class StorageService {
       };
     }
 
-    const updated = [...current, itemId];
-    this.setDailyPriorities(dateStr, updated);
+    // Determine canonical format: if it's a habit, use 'h_item_' format
+    const isHabitItem = isHabit || this.getHabits().some((h) => h.id === itemId);
+    const canonicalId = isHabitItem ? habitPrefixedId : itemId;
+
+    const updated = [...current, canonicalId];
+    this.setDailyPriorities(targetDate, updated);
     return { success: true, priorities: updated };
   }
 
-  public autoSelectTop3(dateStr: string): string[] {
-    const items = this.getDayItems(dateStr);
-    // Prioritize pending items first, then completed items
-    const candidates = [...items].sort((a, b) => {
-      if (a.completed === b.completed) return 0;
-      return a.completed ? 1 : -1;
+  public autoSelectTop3(dateStr?: string): string[] {
+    const targetDate = dateStr && typeof dateStr === 'string' && dateStr.trim().length > 0
+      ? dateStr.trim()
+      : getCurrentIST().dateStr;
+
+    // Sanitize any existing priorities first to eliminate stale or ghost slots
+    const existing = this.sanitizeDailyPriorities(targetDate);
+    const items = this.getDayItems(targetDate);
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return this.setDailyPriorities(targetDate, []);
+    }
+
+    // Preserve any existing valid priorities the user already set
+    const validExistingIds = existing.filter((id) =>
+      items.some((i) => i.id === id || (i.isHabit && (i.id === `h_item_${id}` || i.habitId === id)))
+    );
+
+    const chosenSet = new Set(validExistingIds);
+    // Remaining candidates not already chosen
+    const remainingCandidates = items.filter((i) => !chosenSet.has(i.id));
+
+    // Sort remaining candidates:
+    // 1. Pending items before completed items
+    // 2. Study sessions / exam tasks before general chores
+    remainingCandidates.sort((a, b) => {
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      const aIsStudy = Boolean(a.isStudySession || a.studySubject || a.category === 'SSC CGL');
+      const bIsStudy = Boolean(b.isStudySession || b.studySubject || b.category === 'SSC CGL');
+      if (aIsStudy !== bIsStudy) {
+        return aIsStudy ? -1 : 1;
+      }
+      return 0;
     });
-    const pickedIds = candidates.slice(0, 3).map(i => i.id);
-    return this.setDailyPriorities(dateStr, pickedIds);
+
+    // Fill up to 3 slots
+    const combinedIds: string[] = [...validExistingIds];
+    for (const item of remainingCandidates) {
+      if (!combinedIds.includes(item.id)) {
+        combinedIds.push(item.id);
+      }
+      if (combinedIds.length >= 3) break;
+    }
+
+    const finalTop3 = combinedIds.slice(0, 3);
+    return this.setDailyPriorities(targetDate, finalTop3);
   }
 
   // --- UNIFIED DAY ITEMS & PROGRESS ---

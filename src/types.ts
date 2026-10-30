@@ -496,4 +496,29 @@ export interface MockTestRecord {
   createdAt: string;
 }
 
+export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+export type BadgeCategory = 'streak' | 'daily_target' | 'top3' | 'focus' | 'revision';
+
+export interface MilestoneBadge {
+  id: string; // e.g. "streak_7_day"
+  title: string; // e.g. "7-Day Streak Master"
+  description: string;
+  icon: string;
+  category: BadgeCategory;
+  tier: BadgeTier;
+  targetValue: number;
+  currentValue: number;
+  unlocked: boolean;
+  unlockedAt?: string | null;
+  hasCelebrated?: boolean;
+  rewardText?: string;
+  progressPercent: number;
+  progressLabel: string;
+}
+
+export interface CelebrationEvent {
+  badge: MilestoneBadge;
+  celebratedAt: string;
+}
+
 

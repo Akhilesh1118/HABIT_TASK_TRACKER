@@ -42,6 +42,7 @@ interface FocusModeModalProps {
   onSelectMode: (mode: FocusPresetMode, customFocus?: number, customBreak?: number) => void;
   onSelectTask: (task: { id?: string; title: string; category?: TaskCategory; isHabit?: boolean }) => void;
   onToggleAutoMarkTaskComplete?: (enabled: boolean) => void;
+  onOpenZenMode?: () => void;
   todayTasks: DailySummaryItem[];
   todayDate: string;
 }
@@ -61,6 +62,7 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
   onSelectMode,
   onSelectTask,
   onToggleAutoMarkTaskComplete,
+  onOpenZenMode,
   todayTasks,
   todayDate,
 }) => {
@@ -502,6 +504,19 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
+
+          {/* Zen Fullscreen Focus Mode Trigger */}
+          {onOpenZenMode && (
+            <button
+              id="focus-zen-fullscreen-btn"
+              onClick={onOpenZenMode}
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 transition-all flex items-center space-x-1.5 text-xs font-semibold cursor-pointer shadow-sm hover:shadow-emerald-900/30"
+              title="Launch Zen Fullscreen Deep Work Mode"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <span>Zen Mode</span>
+            </button>
+          )}
 
           {/* Minimize / Close */}
           <button

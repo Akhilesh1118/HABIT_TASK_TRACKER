@@ -151,34 +151,34 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
   return (
     <div
       id="quick-notes-card"
-      className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-5 shadow-xs transition-all space-y-3"
+      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 p-4 sm:p-5 shadow-xs transition-colors space-y-3"
     >
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+      <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
         <div className="flex items-center space-x-2.5">
-          <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-sm shadow-2xs">
-            <StickyNote className="w-4 h-4 text-amber-700" />
+          <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-sm shadow-2xs">
+            <StickyNote className="w-4 h-4 text-amber-700 dark:text-amber-400" />
           </div>
           <div>
-            <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-stone-900 flex items-center gap-2">
+            <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <span>Quick Notes</span>
               {quickNotes.trim().length > 0 && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                   Active
                 </span>
               )}
               {saveStatus === 'saving' && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse">
                   Saving...
                 </span>
               )}
               {saveStatus === 'saved' && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 transition-opacity">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-opacity">
                   Saved ✓
                 </span>
               )}
             </h3>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400">
               Ephemeral thoughts, scratchpad &amp; reminders for {friendlyDate}
             </p>
           </div>
@@ -192,19 +192,19 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
                 id="copy-quick-notes-btn"
                 type="button"
                 onClick={handleCopyNotes}
-                className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors text-xs inline-flex items-center space-x-1 cursor-pointer"
+                className="p-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors text-xs inline-flex items-center space-x-1 cursor-pointer"
                 title="Copy notes to clipboard"
               >
                 {copiedNotes ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
                 )}
               </button>
 
               {showClearConfirm ? (
-                <div className="flex items-center space-x-1 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200 animate-in fade-in duration-100">
-                  <span className="text-[10px] text-rose-700 font-semibold">Clear?</span>
+                <div className="flex items-center space-x-1 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-lg border border-rose-200 dark:border-rose-800 animate-in fade-in duration-100">
+                  <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold">Clear?</span>
                   <button
                     type="button"
                     onClick={handleClearNotes}
@@ -215,7 +215,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowClearConfirm(false)}
-                    className="px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded text-[10px] hover:bg-stone-300 cursor-pointer"
+                    className="px-1.5 py-0.5 bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded text-[10px] hover:bg-stone-300 dark:hover:bg-stone-600 cursor-pointer"
                   >
                     No
                   </button>
@@ -225,7 +225,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
                   id="clear-quick-notes-btn"
                   type="button"
                   onClick={() => setShowClearConfirm(true)}
-                  className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-stone-400 dark:text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                   title="Clear notes"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -238,7 +238,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
             id="toggle-quick-notes-btn"
             type="button"
             onClick={() => setIsNotesExpanded(!isNotesExpanded)}
-            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
             title={isNotesExpanded ? 'Collapse notes' : 'Expand notes'}
           >
             {isNotesExpanded ? (
@@ -261,21 +261,21 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               onBlur={() => flushSave()}
               placeholder="Jot down quick thoughts, phone numbers, review checkpoints, or daily reflections for this date..."
               rows={4}
-              className="w-full p-3 text-xs sm:text-sm font-medium text-stone-800 placeholder:text-stone-400 bg-stone-50/50 hover:bg-white focus:bg-white rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-stone-900 transition-all resize-y min-h-[100px] leading-relaxed shadow-2xs font-mono sm:font-sans"
+              className="w-full p-3 text-xs sm:text-sm font-medium text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 bg-stone-50/50 dark:bg-stone-800/50 hover:bg-white dark:hover:bg-stone-800 focus:bg-white dark:focus:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900 dark:focus:ring-stone-100 focus:border-stone-900 dark:focus:border-stone-100 transition-all resize-y min-h-[100px] leading-relaxed shadow-2xs font-mono sm:font-sans"
             />
           </div>
 
           {/* Quick Snippet Buttons & Footer Meta */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pt-1 text-[11px] text-stone-500">
+          <div className="flex items-center justify-between flex-wrap gap-2 pt-1 text-[11px] text-stone-500 dark:text-stone-400">
             <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
-              <span className="text-stone-400 font-medium">Quick insert:</span>
+              <span className="text-stone-400 dark:text-stone-500 font-medium">Quick insert:</span>
               <button
                 type="button"
                 onClick={() => {
                   const now = getCurrentIST();
                   handleInsertSnippet(`[${now.timeStr}] `);
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-stone-600 dark:text-stone-300 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors cursor-pointer"
                 title="Insert current IST timestamp"
               >
                 <Clock3 className="w-3 h-3" />
@@ -284,7 +284,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               <button
                 type="button"
                 onClick={() => handleInsertSnippet('• ')}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-stone-600 dark:text-stone-300 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors cursor-pointer"
                 title="Insert bullet point"
               >
                 <List className="w-3 h-3" />
@@ -293,7 +293,7 @@ export const QuickNotesCard: React.FC<QuickNotesCardProps> = ({
               <button
                 type="button"
                 onClick={() => handleInsertSnippet('[ ] ')}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-stone-600 dark:text-stone-300 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors cursor-pointer"
                 title="Insert checkbox"
               >
                 <SquareCheck className="w-3 h-3" />

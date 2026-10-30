@@ -452,6 +452,27 @@ export function useFocusTimer(
     }));
   }, []);
 
+  // Extend active session duration by given minutes
+  const addMinutes = useCallback((mins: number) => {
+    if (mins <= 0) return;
+    setTimerState((prev) => {
+      const extraSecs = mins * 60;
+      const newTotal = prev.totalSeconds + extraSecs;
+      const newRemaining = prev.remainingSeconds + extraSecs;
+      const now = Date.now();
+      const newTarget =
+        prev.status === 'running'
+          ? (prev.targetEndTime ? prev.targetEndTime + extraSecs * 1000 : now + newRemaining * 1000)
+          : prev.targetEndTime;
+      return {
+        ...prev,
+        totalSeconds: newTotal,
+        remainingSeconds: newRemaining,
+        targetEndTime: newTarget,
+      };
+    });
+  }, []);
+
   return {
     timerState,
     soundEnabled,
@@ -465,5 +486,6 @@ export function useFocusTimer(
     setMode,
     setTask,
     setAutoMarkTaskComplete,
+    addMinutes,
   };
 }

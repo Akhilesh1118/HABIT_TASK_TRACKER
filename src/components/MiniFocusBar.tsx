@@ -1,10 +1,11 @@
 import React from 'react';
-import { Play, Pause, Maximize2, CheckCircle2 } from 'lucide-react';
+import { Play, Pause, Maximize2, CheckCircle2, Sparkles } from 'lucide-react';
 import { ActiveFocusTimerState } from '../types';
 
 interface MiniFocusBarProps {
   timerState: ActiveFocusTimerState;
   onOpenFocusModal: () => void;
+  onOpenZenMode?: () => void;
   onPause: () => void;
   onResume: () => void;
   onComplete: () => void;
@@ -13,6 +14,7 @@ interface MiniFocusBarProps {
 export const MiniFocusBar: React.FC<MiniFocusBarProps> = ({
   timerState,
   onOpenFocusModal,
+  onOpenZenMode,
   onPause,
   onResume,
   onComplete,
@@ -84,6 +86,17 @@ export const MiniFocusBar: React.FC<MiniFocusBarProps> = ({
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
         </button>
+
+        {onOpenZenMode && (
+          <button
+            onClick={onOpenZenMode}
+            className="p-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 transition-colors flex items-center space-x-1 border border-emerald-800/60"
+            title="Launch Zen Fullscreen Mode"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[11px] font-medium hidden sm:inline">Zen</span>
+          </button>
+        )}
 
         <button
           onClick={onOpenFocusModal}

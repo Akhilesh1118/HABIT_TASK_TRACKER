@@ -11,6 +11,7 @@ import { FeatureErrorBoundary } from './components/FeatureErrorBoundary';
 import { LoginPage } from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
 import { useFocusTimer } from './hooks/useFocusTimer';
+import { useTheme } from './hooks/useTheme';
 import { Task, Habit, ProductivityStats, DailySummaryItem } from './types';
 import { authenticatedFetch, clearAuthToken, getAuthToken } from './utils/authClient';
 import { getCurrentIST } from './utils/timeUtils';
@@ -26,8 +27,11 @@ const StreakProtectionModal = lazy(() => import('./components/StreakProtectionMo
 const WeeklyReviewModal = lazy(() => import('./components/WeeklyReviewModal').then((module) => ({ default: module.WeeklyReviewModal })));
 const AICoachModal = lazy(() => import('./components/AICoachModal').then((module) => ({ default: module.AICoachModal })));
 const MockTestTrackerModal = lazy(() => import('./components/MockTestTrackerModal').then((module) => ({ default: module.MockTestTrackerModal })));
+const ZenFocusMode = lazy(() => import('./components/ZenFocusMode').then((module) => ({ default: module.ZenFocusMode })));
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
+
   // Use today's date from environment or client (Asia/Kolkata timezone)
   const [todayDate, setTodayDate] = useState<string>(() => {
     return getCurrentIST().dateStr;
@@ -106,6 +110,7 @@ export default function App() {
   const [editingTaskDate, setEditingTaskDate] = useState<string>(todayDate);
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
+  const [isZenModeOpen, setIsZenModeOpen] = useState(false);
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [isStreakProtectionOpen, setIsStreakProtectionOpen] = useState(false);
   const [isWeeklyReviewModalOpen, setIsWeeklyReviewModalOpen] = useState(false);
@@ -505,7 +510,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100/60 text-stone-900 flex flex-col font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-stone-100/60 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-300 transition-colors duration-200">
       {/* Top Navigation */}
       <Header
         user={user}
@@ -521,6 +526,7 @@ export default function App() {
         onGoToToday={handleGoToToday}
         onOpenHabitManager={() => setIsHabitModalOpen(true)}
         onOpenFocusMode={() => setIsFocusModalOpen(true)}
+        onOpenZenMode={() => setIsZenModeOpen(true)}
         isFocusActive={isFocusActive}
         focusTimeRemaining={focusTimeRemainingStr}
         onOpenRevisionModal={() => setIsRevisionModalOpen(true)}
@@ -529,6 +535,8 @@ export default function App() {
         onLogout={handleLogout}
         authUser={authUser}
         userEmail={authUser?.email}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Workspace */}
@@ -563,8 +571,8 @@ export default function App() {
               />
 
               {/* Student Context & Consistency Advice */}
-              <div className="bg-white rounded-xl p-4 border border-stone-200/80 text-xs text-stone-500 shadow-xs">
-                <div className="flex items-center space-x-2 font-semibold text-stone-800 mb-1">
+              <div className="bg-white dark:bg-stone-900 rounded-xl p-4 border border-stone-200/80 dark:border-stone-800 text-xs text-stone-500 dark:text-stone-400 shadow-xs transition-colors">
+                <div className="flex items-center space-x-2 font-semibold text-stone-800 dark:text-stone-200 mb-1">
                   <span>🎯 Consistency Rule</span>
                 </div>
                 <p className="leading-relaxed">
@@ -589,6 +597,7 @@ export default function App() {
                 selectedDate={selectedDate}
                 todayDate={todayDate}
                 items={dayItems}
+                userName={authUser?.name || user?.name}
                 streakStatus={stats.streakStatus}
                 focusMinutesToday={focusMinutesToday}
                 focusMinutesSelectedDate={focusMinutesSelectedDate}
@@ -605,6 +614,7 @@ export default function App() {
                 onStartFocus={handleStartFocusForTask}
                 revisionsDueTodayCount={revisionsDueTodayCount}
                 onOpenRevisionModal={() => setIsRevisionModalOpen(true)}
+                onAutoPickTop3={handleAutoPickTop3}
               />
             </div>
           </div>
@@ -624,11 +634,12 @@ export default function App() {
         )}
       </main>
 
-      {/* Mini Focus Bar (when minimized while running or paused) */}
-      {!isFocusModalOpen && (
+      {/* Mini Focus Bar (when minimized while running or paused and Zen mode is not open) */}
+      {!isFocusModalOpen && !isZenModeOpen && (
         <MiniFocusBar
           timerState={focusTimer.timerState}
           onOpenFocusModal={() => setIsFocusModalOpen(true)}
+          onOpenZenMode={() => setIsZenModeOpen(true)}
           onPause={focusTimer.pause}
           onResume={focusTimer.resume}
           onComplete={() => focusTimer.complete(true)}
@@ -651,9 +662,38 @@ export default function App() {
         onSelectMode={focusTimer.setMode}
         onSelectTask={focusTimer.setTask}
         onToggleAutoMarkTaskComplete={focusTimer.setAutoMarkTaskComplete}
+        onOpenZenMode={() => {
+          setIsFocusModalOpen(false);
+          setIsZenModeOpen(true);
+        }}
         todayTasks={todayItems}
         todayDate={todayDate}
       /></Suspense>}
+
+      {/* Zen Fullscreen Deep Work Mode */}
+      {isZenModeOpen && (
+        <Suspense fallback={null}>
+          <ZenFocusMode
+            isOpen={isZenModeOpen}
+            onClose={() => setIsZenModeOpen(false)}
+            timerState={focusTimer.timerState}
+            onStart={focusTimer.start}
+            onPause={focusTimer.pause}
+            onResume={focusTimer.resume}
+            onStop={() => focusTimer.stop(true)}
+            onComplete={(markDone) => {
+              focusTimer.complete(markDone);
+              setIsZenModeOpen(false);
+            }}
+            onStartBreak={focusTimer.startBreak}
+            onAddTime={focusTimer.addMinutes}
+            soundEnabled={focusTimer.soundEnabled}
+            onToggleSound={() => focusTimer.setSoundEnabled(!focusTimer.soundEnabled)}
+            todayTasks={todayItems}
+            onSelectTask={focusTimer.setTask}
+          />
+        </Suspense>
+      )}
 
       {/* Task Add/Edit Modal */}
       {isTaskModalOpen && <Suspense fallback={null}><TaskModal

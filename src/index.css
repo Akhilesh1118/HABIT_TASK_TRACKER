@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   html,
   body,
@@ -15,6 +17,11 @@
     color: #1c1917;
     background-color: #fafaf9;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  html.dark body {
+    color: #f5f5f4;
+    background-color: #0c0a09;
   }
 }
 

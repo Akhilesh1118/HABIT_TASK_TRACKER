@@ -35,9 +35,9 @@ export const ActivityGrid: React.FC<ActivityGridProps> = ({
 
     // Selection ring
     if (isSel) {
-      base += 'ring-2 ring-stone-900 ring-offset-2 z-10 ';
+      base += 'ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900 z-10 ';
     } else {
-      base += 'hover:ring-1 hover:ring-stone-400 ';
+      base += 'hover:ring-1 hover:ring-stone-400 dark:hover:ring-stone-600 ';
     }
 
     // Faded if not current month
@@ -48,20 +48,20 @@ export const ActivityGrid: React.FC<ActivityGridProps> = ({
     // Level colors
     switch (day.level) {
       case 'high': // 100%
-        base += 'bg-emerald-600 text-white font-semibold shadow-xs';
+        base += 'bg-emerald-600 dark:bg-emerald-500 text-white font-semibold shadow-xs';
         break;
       case 'medium': // 50-99%
-        base += 'bg-emerald-400 text-emerald-950 font-medium';
+        base += 'bg-emerald-400 dark:bg-emerald-600 text-emerald-950 dark:text-white font-medium';
         break;
       case 'low': // 1-49%
-        base += 'bg-emerald-100 text-emerald-900 border border-emerald-300';
+        base += 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60';
         break;
       case 'empty': // 0% completed of scheduled tasks
-        base += 'bg-stone-100 text-stone-700 border border-dashed border-stone-300';
+        base += 'bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 border border-dashed border-stone-300 dark:border-stone-700';
         break;
       case 'none': // no tasks scheduled
       default:
-        base += 'bg-stone-50 text-stone-600 border border-stone-200/70 hover:bg-stone-100';
+        base += 'bg-stone-50 dark:bg-stone-800/60 text-stone-600 dark:text-stone-400 border border-stone-200/70 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800';
         break;
     }
 
@@ -69,12 +69,12 @@ export const ActivityGrid: React.FC<ActivityGridProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs p-3.5 sm:p-6">
+    <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 shadow-xs p-3.5 sm:p-6 transition-colors">
       {/* Month Navigation Header */}
       <div className="flex items-center justify-between mb-3.5 sm:mb-5">
         <div className="flex items-center space-x-2 sm:space-x-2.5">
-          <CalendarIcon className="w-4.5 h-4.5 sm:w-6 sm:h-6 text-stone-700 shrink-0" />
-          <h2 className="text-base sm:text-xl font-bold text-stone-900 truncate">
+          <CalendarIcon className="w-4.5 h-4.5 sm:w-6 sm:h-6 text-stone-700 dark:text-stone-300 shrink-0" />
+          <h2 className="text-base sm:text-xl font-bold text-stone-900 dark:text-stone-100 truncate">
             {monthName} {year}
           </h2>
         </div>
@@ -84,14 +84,14 @@ export const ActivityGrid: React.FC<ActivityGridProps> = ({
             id="prev-month-btn"
             onClick={onPrevMonth}
             aria-label="Previous Month"
-            className="p-1.5 sm:p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button
             id="today-month-btn"
             onClick={onCurrentMonth}
-            className="text-xs sm:text-sm font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-stone-700 hover:bg-stone-100 transition-colors"
+            className="text-xs sm:text-sm font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
           >
             Today
           </button>
@@ -99,7 +99,7 @@ export const ActivityGrid: React.FC<ActivityGridProps> = ({
             id="next-month-btn"
             onClick={onNextMonth}
             aria-label="Next Month"
-            className="p-1.5 sm:p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
